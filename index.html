@@ -549,8 +549,8 @@ function setupTabButtons(){
       <div class="t1">CONTROL DE PROYECTOS</div>
       <div class="t2">Curvas S · Gantt · Velocímetro</div>
     </div>
-    <div class="nav-item" data-page="import"><span class="nav-icon">📥</span><span>Importar Excel</span><span class="count-pill" id="navFileCount">0</span></div>
-    <div class="nav-item active" data-page="tracking"><span class="nav-icon">📊</span><span>Seguimiento de Proyectos</span><span class="count-pill" id="navProjCount">0</span></div>
+    <div class="nav-item active" data-page="import"><span class="nav-icon">📥</span><span>Importar Excel</span><span class="count-pill" id="navFileCount">0</span></div>
+    <div class="nav-item" data-page="tracking"><span class="nav-icon">📊</span><span>Seguimiento de Proyectos</span><span class="count-pill" id="navProjCount">0</span></div>
     <div class="nav-item" data-page="responsables"><span class="nav-icon">👤</span><span>Responsables</span><span class="count-pill" id="navRespCount">0</span></div>
   <div class="nav-item" data-page="entregables">
     <span class="nav-icon">📦</span>
@@ -1166,7 +1166,24 @@ function buildChart(proj, cutIdx, W, H){
     svg += `<line x1="${px}" y1="${padT}" x2="${px}" y2="${padT+innerH}" stroke="var(--grid)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
     
     // Labels horizontales abajo del gráfico
-    const label = proj.week_labels[i] || '';
+    const semana = proj.week_labels[i] || '';
+    const fecha = proj.week_dates[i];
+    
+    // Formatear fecha en forma corta (DD/MMM)
+    let fechaStr = '';
+    if(fecha){
+      const dateObj = typeof fecha === 'string' ? new Date(fecha) : fecha;
+      if(dateObj instanceof Date && !isNaN(dateObj)){
+        const dia = dateObj.getDate().toString().padStart(2, '0');
+        const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+        const mes = meses[dateObj.getMonth()];
+        fechaStr = `${dia}/${mes}`;
+      }
+    }
+    
+    // Label con Semana - Fecha
+    const label = fechaStr ? `${semana} - ${fechaStr}` : semana;
+    
     // Poner label cada semana, inclinado 45 grados
     svg += `<text x="${px}" y="${padT+innerH+20}" font-size="10" fill="var(--ink-faint)" text-anchor="middle" transform="rotate(45 ${px} ${padT+innerH+20})">${label}</text>`;
   }
@@ -2549,6 +2566,7 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
   html += `<table style="border-collapse: collapse; width: 100%; font-size: 13px; border-top: 2px solid #da2a2b;">
     <thead>
       <tr style="background: #da2a2b; border-bottom: 2px solid #da2a2b;">
+        <th style="padding: 10px 6px; text-align: left; font-weight: 600; color: white; border: none; font-size: 13px; width: 120px; background: rgba(0,0,0,0.1);">🏷️ Nivel</th>
         <th style="padding: 10px 6px; text-align: center; font-weight: 600; color: white; border: none; font-size: 13px; width: 60px; background: rgba(0,0,0,0.1);">📊 Total</th>
         <th style="padding: 10px 4px; text-align: center; font-weight: 600; color: white; border: none; font-size: 13px; width: 50px; background: rgba(46,125,70,0.15);">✓ Atend.</th>
         <th style="padding: 10px 4px; text-align: center; font-weight: 600; color: white; border: none; font-size: 13px; width: 50px; background: rgba(192,0,0,0.15);">⏳ Pend.</th>`;
@@ -2560,6 +2578,10 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
   html += `</tr></thead><tbody>`;
   
   let projIndex = 0;
+  let totalGlobalTotal = 0, totalGlobalAtendidos = 0, totalGlobalPendientes = 0;
+  const totalPorSemana = {};
+  sortedWeeks.forEach(w => totalPorSemana[w] = {total: 0, completado: 0});
+  
   sortedProjects.forEach(nivel => {
     const nivelName = nivel;
     const nivelColor = nivelColorMap[nivel];
@@ -2571,13 +2593,20 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
       if(stat) {
         totalEntregablesNivel += stat.total;
         atendidosNivel += stat.completado;
+        totalPorSemana[week].total += stat.total;
+        totalPorSemana[week].completado += stat.completado;
       }
     });
     const pendientesNivel = totalEntregablesNivel - atendidosNivel;
+    totalGlobalTotal += totalEntregablesNivel;
+    totalGlobalAtendidos += atendidosNivel;
+    totalGlobalPendientes += pendientesNivel;
+    
     const bgColor = projIndex % 2 === 0 ? 'white' : '#FAFAF8';
     projIndex++;
     
     html += `<tr style="border-bottom: 1px solid var(--grid); background: ${bgColor};">
+      <td style="padding: 12px 6px; text-align: left; color: var(--ink); font-weight: 600; border: none; background: rgba(128,128,128,0.08);">${nivelName}</td>
       <td style="padding: 12px 6px; text-align: center; color: var(--ink); font-weight: 600; border: none; background: rgba(128,128,128,0.08);">${totalEntregablesNivel}</td>
       <td style="padding: 12px 4px; text-align: center; color: #2E7D46; font-weight: 600; border: none; background: rgba(46,125,70,0.08);" title="Entregables atendidos (Pendiente por = Cerrado)">${atendidosNivel}</td>
       <td style="padding: 12px 4px; text-align: center; color: #C00000; font-weight: 600; border: none; background: rgba(192,0,0,0.08);" title="Entregables pendientes de atender">${pendientesNivel}</td>`;
@@ -2604,7 +2633,24 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
     html += '</tr>';
   });
   
-
+  // ⭐ FILA TOTAL
+  html += `<tr style="border-bottom: 2px solid #da2a2b; background: #F5F7FA; font-weight: 700;">
+    <td style="padding: 12px 6px; text-align: left; color: var(--ink); font-weight: 700; border: none; background: rgba(0,0,0,0.1);">📈 TOTAL</td>
+    <td style="padding: 12px 6px; text-align: center; color: var(--ink); font-weight: 700; border: none; background: rgba(0,0,0,0.1);">${totalGlobalTotal}</td>
+    <td style="padding: 12px 4px; text-align: center; color: #2E7D46; font-weight: 700; border: none; background: rgba(46,125,70,0.15);">${totalGlobalAtendidos}</td>
+    <td style="padding: 12px 4px; text-align: center; color: #C00000; font-weight: 700; border: none; background: rgba(192,0,0,0.15);">${totalGlobalPendientes}</td>`;
+  
+  sortedWeeks.forEach(week => {
+    const stat = totalPorSemana[week];
+    const porcentaje = stat.total > 0 ? Math.round((stat.completado / stat.total) * 100) : 0;
+    const textColor = porcentaje >= 75 ? '#2E7D46' : porcentaje >= 50 ? '#D9A441' : '#C00000';
+    
+    html += `<td style="padding: 12px 8px; text-align: center; color: ${textColor}; font-weight: 700; border: none; background: #F5F7FA;" title="Total semana ${week}: ${stat.completado}/${stat.total} (${porcentaje}%)">
+      ${stat.total > 0 ? `${stat.completado}/${stat.total}` : '-'}
+    </td>`;
+  });
+  
+  html += `</tr>`;
   
   html += `</tbody></table></div></div>`;
   
