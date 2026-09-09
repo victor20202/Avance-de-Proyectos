@@ -1,0 +1,3404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Avance · Curvas S</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+function setupTabButtons(){
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.addEventListener('click', function(){
+      const tabName = this.dataset.tab;
+      const container = this.closest('.tabs-container').nextElementSibling || this.closest('.tabs-container').parentElement;
+      
+      if(!container) return;
+      
+      // Encontrar el container de tabs-content
+      const tabsContent = container.querySelectorAll('.tabs-content');
+      const tabsHeader = this.closest('.tabs-header');
+      
+      if(!tabsContent.length) return;
+      
+      // Desactivar todos
+      tabsContent.forEach(t => t.classList.remove('active'));
+      tabsHeader.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+      
+      // Activar seleccionado
+      const target = document.getElementById('tab-' + tabName);
+      if(target){
+        target.classList.add('active');
+        this.classList.add('active');
+      }
+    });
+  });
+}
+
+</script>
+<style>
+  :root{
+    --bg:#F8FAFB;
+    --content-bg:#F5F7FA;
+    --panel:#FFFFFF;
+    --panel-2:#F5F7FA;
+    --grid:#E8EDF2;
+    --grid-soft:#F0F3F7;
+    --ink:#1B3A50;
+    --ink-dim:#2C4A5F;
+    --ink-faint:#6B7A8C;
+    --plan:#3D7A8B;
+    --real:#5EBFA8;
+    --pos:#5EBFA8;
+    --neg:#E74C3C;
+    --amber:#F39C12;
+    --shadow:0 2px 8px rgba(27,58,80,0.08), 0 12px 24px rgba(27,58,80,0.12);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--content-bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ================= Shell: Dashboard Layout ================= */
+  .shell{display:flex; min-height:100vh; align-items:stretch;}
+
+  .sidenav{
+    flex:0 0 250px;
+    background:var(--panel);
+    border-right:2px solid var(--grid);
+    padding:12px 0;
+    display:flex;
+    flex-direction:column;
+  }
+  .nav-brand{display:none;}
+
+  .nav-item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:13px 22px;
+    font-size:13.5px;
+    font-weight:600;
+    color:var(--ink-dim);
+    cursor:pointer;
+    border-left:3px solid transparent;
+    transition:background .15s ease, color .15s ease;
+  }
+  .nav-item .nav-icon{font-size:15px; flex-shrink:0; width:18px; text-align:center;}
+  .nav-item:hover{background:var(--panel-2); color:var(--ink);}
+  .nav-item.active{
+    background:rgba(192,0,0,0.07);
+    color:var(--real);
+    border-left-color:var(--real);
+  }
+  .nav-item .count-pill{
+    margin-left:auto;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    background:var(--panel-2);
+    color:var(--ink-faint);
+    border-radius:20px;
+    padding:2px 7px;
+  }
+  .nav-item.active .count-pill{background:rgba(192,0,0,0.12); color:var(--real);}
+
+  .content{flex:1; min-width:0; display:flex; flex-direction:column;}
+
+  .page-header{
+    display:flex;
+    gap:16px;
+    align-items:stretch;
+    padding:40px 40px;
+    background:linear-gradient(135deg, #FFFFFF 0%, #F5F7FA 100%);
+    border-bottom:3px solid var(--plan);
+    box-shadow:0 2px 8px rgba(27,58,80,0.1);
+  }
+  .accent-bar{width:4px; border-radius:2px; background:linear-gradient(180deg, var(--plan) 0%, var(--real) 100%); flex-shrink:0;}
+  .page-header h1{font-size:28px; font-weight:800; margin:0 0 8px; letter-spacing:-0.02em; color:var(--ink);}
+  .page-header .subtitle{font-size:14.5px; color:var(--ink-faint); margin:0; font-weight:500;}
+
+  .page-body{padding:30px 34px; flex:1;}
+  .page-section{display:none;}
+  .page-section.active{display:block;}
+
+  /* ================= Inicio page ================= */
+  .hero{
+    background:linear-gradient(135deg, #FFFFFF 0%, #F2EEE9 100%);
+    border:1px solid var(--grid);
+    border-radius:10px;
+    padding:56px 40px;
+    text-align:center;
+  }
+  .hero h2{font-size:32px; font-weight:800; margin:0 0 14px; color:var(--ink);}
+  .hero p{font-size:14.5px; color:var(--ink-dim); max-width:520px; margin:0 auto 28px; line-height:1.6;}
+  .hero .btn{font-size:14px; padding:14px 26px;}
+
+  .stat-cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
+    gap:14px;
+    margin-top:28px;
+  }
+  .stat-card{
+    background:linear-gradient(135deg, #FFFFFF 0%, #F8FAFB 100%);
+    border:1.5px solid var(--grid);
+    border-radius:12px;
+    padding:24px 22px;
+    box-shadow:var(--shadow);
+    transition:all .2s ease;
+  }
+  .stat-card:hover{transform:translateY(-4px); border-color:var(--plan);}
+  .stat-card .num{font-family:'IBM Plex Mono', monospace; font-size:28px; font-weight:700; color:var(--plan); letter-spacing:-0.5px;}
+  .stat-card .lbl{font-size:12px; color:var(--ink-faint); margin-top:6px; font-weight:500;}
+
+  .quick-list{margin-top:28px;}
+  .quick-list h3{font-size:13px; font-weight:600; color:var(--ink-dim); margin:0 0 12px; text-transform:uppercase; letter-spacing:0.03em;}
+
+  /* ================= Import page ================= */
+  .dropzone{
+    border:2px dashed var(--grid);
+    border-radius:12px;
+    background:var(--panel);
+    padding:50px 30px;
+    text-align:center;
+    max-width:520px;
+    transition:all .2s ease;
+  }
+  .dropzone.drag{border-color:var(--real); background:rgba(0,212,255,0.1);}
+  .dropzone h3{margin:0 0 6px; font-size:15px; font-weight:600;}
+  .dropzone p{margin:0 0 18px; font-size:12.5px; color:var(--ink-faint);}
+  .btn{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    font-weight:500;
+    color:#FFFFFF;
+    background:var(--real);
+    border:none;
+    border-radius:5px;
+    padding:11px 18px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn.ghost{background:transparent; color:var(--ink-dim); border:1px solid var(--grid);}
+  .btn.ghost:hover{color:var(--ink); border-color:var(--ink-faint);}
+  #fileInput{display:none;}
+
+  .btnrow{display:flex; gap:10px; margin-top:16px; max-width:520px;}
+
+  .filebar{display:flex; flex-wrap:wrap; gap:6px; margin-top:16px; max-width:520px;}
+  .filebar .chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    background:var(--panel-2);
+    border:1px solid var(--grid);
+    border-radius:20px;
+    padding:4px 10px;
+    color:var(--ink-dim);
+  }
+
+  .errors{margin-top:14px; max-width:520px;}
+  .errors .err{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    color:#8C0000;
+    background:rgba(192,0,0,0.06);
+    border:1px solid rgba(192,0,0,0.28);
+    border-radius:4px;
+    padding:9px 12px;
+    margin-bottom:6px;
+  }
+
+  .cutoff-block{margin-top:22px; padding-top:20px; border-top:1px solid var(--grid); max-width:520px;}
+  .cutoff-block.hidden{display:none;}
+  .cutoff-block label{
+    display:flex; flex-direction:column; gap:6px;
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--ink-dim);
+  }
+  .cutoff-block input[type="date"]{
+    background:var(--panel-2);
+    border:1px solid var(--grid);
+    color:var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    padding:8px 10px;
+    border-radius:4px;
+    color-scheme:light;
+    max-width:220px;
+  }
+  .cutoff-block .range{font-size:10.5px; color:var(--ink-faint); margin-top:8px;}
+
+  /* ================= Tracking page ================= */
+  .proj-select-row{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:24px;}
+  .proj-pill{
+    display:flex; align-items:center; gap:8px;
+    border:1px solid var(--grid);
+    border-radius:20px;
+    padding:7px 9px 7px 14px;
+    background:var(--panel);
+    cursor:pointer;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--ink-dim);
+    max-width:100%;
+  }
+  .proj-pill:hover{border-color:var(--ink-faint);}
+  .proj-pill.active{border-color:var(--real); background:#FBEFEF; color:var(--ink);}
+  .proj-pill .pname{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px;}
+  .proj-pill .rm{background:none; border:none; color:var(--ink-faint); font-size:12px; cursor:pointer; padding:2px; line-height:1;}
+  .proj-pill .rm:hover{color:var(--neg);}
+
+  /* ================= Tabs System (Curva S / Velocímetro / Gantt) ================= */
+  .tabs-container{
+    background:var(--panel);
+    border:1px solid var(--grid);
+    border-radius:8px;
+    box-shadow:var(--shadow);
+    margin-top:16px;
+    overflow:hidden;
+    width: 100%;
+    display: block;
+  }
+  .tabs-header{
+    display:flex;
+    gap:0;
+    background:var(--panel-2);
+    border-bottom:1px solid var(--grid);
+  }
+  .tab-button{
+    flex:1;
+    padding:16px 20px;
+    border:none;
+    background:transparent;
+    color:var(--ink-faint);
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    transition:all .2s ease;
+    border-bottom:3px solid transparent;
+    margin-bottom:-1px;
+    user-select:none;
+  }
+  .tab-button:hover{color:var(--plan); background:rgba(61,122,139,0.05);}
+  .tab-button.active{
+    color:var(--plan);
+    border-bottom-color:var(--plan);
+    background:rgba(61,122,139,0.08);
+  }
+  .tabs-content{
+    display:none !important;
+    width: 100%;
+  }
+  .tabs-content.active{
+    display:block !important;
+  }
+  .tabs-body{padding:22px; width: 100%; box-sizing: border-box; display: block;}
+
+  .main-empty{text-align:center; color:var(--ink-faint); font-size:13.5px; padding:50px 20px;}
+
+  /* ---------- Curva S ---------- */
+  .legend{display:flex; gap:20px; margin-bottom:18px; flex-wrap:wrap;}
+  .legend .item{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-dim); font-family:'IBM Plex Mono', monospace;}
+  .legend .swatch{width:16px; height:3px; border-radius:2px;}
+  .legend .swatch.plan{background:var(--plan);}
+  .legend .swatch.real{background:var(--real);}
+
+  .chart-box{position:relative; margin-bottom:18px; height:280px;}
+  .chart-box svg{display:block; width:100%; height:100%; overflow:visible;}
+  .axis-label{font-family:'IBM Plex Mono', monospace; font-size:10.5px; fill:var(--ink-faint);}
+  .plan-line{fill:none; stroke:var(--plan); stroke-width:2; stroke-dasharray:5 4;}
+  .real-line{fill:none; stroke:var(--real); stroke-width:2.4;}
+  .grid-line{stroke:var(--grid-soft); stroke-width:1;}
+  .cur-line{stroke:var(--ink-faint); stroke-width:1; stroke-dasharray:2 3;}
+  .plan-pt{fill:var(--plan);}
+  .real-pt{fill:var(--real);}
+
+  .stat-row{
+    display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px;
+    background:var(--grid); border:1px solid var(--grid); border-radius:4px; overflow:hidden;
+  }
+  .stat{background:var(--panel-2); padding:14px 16px;}
+  .stat .k{font-size:11px; color:var(--ink-faint); font-family:'IBM Plex Mono', monospace; margin-bottom:6px;}
+  .stat .v{font-size:22px; font-weight:600; font-family:'IBM Plex Mono', monospace; color:var(--ink);}
+  .stat.diff .v.pos{color:var(--pos);}
+  .stat.diff .v.neg{color:var(--neg);}
+  .stat .sub{font-size:11px; color:var(--ink-faint); margin-top:3px;}
+
+  /* ---------- Gauge ---------- */
+  .gauge-wrap{display:flex; flex-direction:column; align-items:center;}
+  .gauge-svg-wrap{max-width:400px; width:100%;}
+  .gauge-readout{text-align:center; margin-top:-8px;}
+  .gauge-readout .big{font-family:'IBM Plex Mono', monospace; font-size:40px; font-weight:600; color:var(--ink); line-height:1;}
+  .gauge-readout .lbl{font-size:12px; color:var(--ink-faint); font-family:'IBM Plex Mono', monospace; margin-top:6px;}
+  .gauge-stats{
+    display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px;
+    background:var(--grid); border:1px solid var(--grid); border-radius:4px; overflow:hidden;
+    margin-top:24px; width:100%; max-width:460px;
+  }
+  .gauge-stats > div{background:var(--panel-2); padding:12px 14px; text-align:center;}
+  .gauge-stats span{display:block; font-size:10.5px; color:var(--ink-faint); font-family:'IBM Plex Mono', monospace; margin-bottom:5px;}
+  .gauge-stats b{font-size:16px; font-family:'IBM Plex Mono', monospace; color:var(--ink); font-weight:600;}
+  .gauge-stats b.pos{color:var(--pos);}
+  .gauge-stats b.neg{color:var(--neg);}
+
+  /* ---------- Gantt ---------- */
+  .gantt-legend{display:flex; gap:18px; flex-wrap:wrap; margin-bottom:14px; font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--ink-dim);}
+  .gantt-legend .item{display:flex; align-items:center; gap:7px;}
+  .gantt-legend .sw{width:14px; height:8px; border-radius:2px;}
+  .gantt-legend .sw.g{background:var(--grid-soft); border:1px solid var(--grid);}
+  .gantt-legend .sw.f{background:var(--real);}
+  .gantt-legend .sw.st{background:var(--ink); opacity:0.65;}
+  .gantt-legend .dia{width:9px; height:9px; background:var(--ink); transform:rotate(45deg); border-radius:2px;}
+
+  .gantt-wrap{
+    border:1px solid var(--grid); 
+    border-radius:6px; 
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  .gantt-header{
+    display:flex;
+    background:linear-gradient(90deg, var(--panel-2) 0%, #F0F3F7 100%);
+    border-bottom:2px solid var(--plan);
+    min-width: min-content;
+  }
+  .gantt-header-col{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-dim);
+    padding: 8px 4px;
+    position: relative;
+    white-space:nowrap;
+    flex-shrink: 0;
+    border-right: 6px solid transparent;
+  }
+  .gantt-header-col:hover{
+    border-right-color: var(--grid);
+  }
+  .gantt-header-col span{
+    pointer-events: none;
+    user-select: none;
+  }
+  .gantt-resizer{
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: col-resize;
+    background: transparent;
+  }
+  .gantt-corner{
+    flex:0 0 180px; 
+    border-right:1px solid var(--grid);
+    padding:0;
+  }
+  .gantt-ticks{
+    position:relative; 
+    flex:1; 
+    height:30px;
+    min-width: 600px;
+  }
+  .g-tick{
+    position:absolute; 
+    top:8px; 
+    transform:translateX(-50%); 
+    font-size:10px; 
+    font-family:'IBM Plex Mono', monospace; 
+    color:var(--ink-faint); 
+    white-space:nowrap;
+  }
+  .g-cutoff-tag{
+    position:absolute; 
+    top:3px; 
+    transform:translateX(-50%);
+    font-size:9.5px; 
+    font-family:'IBM Plex Mono', monospace; 
+    color:#fff; 
+    background:var(--real);
+    padding:2px 5px; 
+    border-radius:3px; 
+    white-space:nowrap;
+  }
+  .gantt-body{
+    position:relative; 
+    max-height:460px; 
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    min-width: min-content;
+  }
+  .gantt-row{
+    display:flex; 
+    align-items:stretch; 
+    height:24px; 
+    border-bottom:1px solid var(--grid-soft);
+    flex-wrap: nowrap;
+  }
+  .gantt-row:hover{background:var(--panel-2);}
+  .gantt-col{
+    user-select: none;
+    overflow: hidden;
+    position: relative;
+  }
+  .gantt-row[data-level="1"]{background-color:rgba(192,0,0,0.04);}
+  .gantt-row[data-level="2"]{background-color:rgba(192,0,0,0.02);}
+  .gantt-row[data-level="3"]{background-color:rgba(0,0,0,0.01);}
+  .gantt-label{
+    flex:0 0 180px; 
+    border-right:1px solid var(--grid);
+    font-size:11px; 
+    color:var(--ink-dim); 
+    white-space:nowrap; 
+    overflow:hidden; 
+    text-overflow:ellipsis;
+    padding:4px 8px;
+    display:flex;
+    align-items:center;
+    user-select:none;
+  }
+  .gantt-label.lvl1{font-weight:600; color:var(--ink);}
+  .gantt-track{
+    position:relative; 
+    flex:1; 
+    height:100%;
+    min-width: 600px;
+  }
+  .g-bar{position:absolute; top:6px; height:12px; background:var(--grid-soft); border:1px solid var(--grid); border-radius:3px; overflow:hidden; min-width:5px;}
+  .g-bar-fill{position:absolute; top:0; left:0; bottom:0; background:var(--real);}
+  .g-group{position:absolute; top:9px; height:6px; background:var(--ink); border-radius:2px; opacity:0.6; min-width:3px;}
+  .g-milestone{position:absolute; top:5px; width:11px; height:11px; background:var(--ink); transform:translateX(-50%) rotate(45deg); border-radius:2px;}
+  .gantt-empty{text-align:center; color:var(--ink-faint); font-size:13px; padding:40px 10px;}
+
+  .foot{
+    margin-top:28px; padding-top:16px; border-top:1px solid var(--grid);
+    font-size:11.5px; color:var(--ink-faint); font-family:'IBM Plex Mono', monospace; line-height:1.7;
+  }
+
+  @media (max-width:860px){
+    .shell{flex-direction:column;}
+    .sidenav{flex:none; width:100%; flex-direction:row; overflow-x:auto; padding:10px;}
+    .nav-brand{display:none;}
+    .nav-item{border-left:none; border-bottom:3px solid transparent; padding:10px 16px; white-space:nowrap;}
+    .nav-item.active{border-left-color:transparent; border-bottom-color:var(--real);}
+  }
+  @media (max-width:640px){
+    .page-header{padding:22px 18px;}
+    .page-body{padding:20px 18px;}
+    .stat-row{grid-template-columns:1fr;}
+    .gauge-stats{grid-template-columns:1fr;}
+  }
+
+  /* ================= Estilos Prorrateo de HH ================= */
+  #prorrateoContent .filters { display: flex; gap: 30px; margin-bottom: 20px; flex-wrap: wrap; align-items: flex-end; }
+  #prorrateoContent .filter-group { display: flex; flex-direction: column; }
+  #prorrateoContent .filter-group label { font-size: 12px; font-weight: bold; color: var(--ink-dim); margin-bottom: 6px; }
+  #prorrateoContent .filter-group select { padding: 8px 12px; border: 1px solid var(--grid); border-radius: 4px; font-size: 13px; background: white; }
+  #prorrateoContent .cod-filter-section { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  #prorrateoContent .cod-filter { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  #prorrateoContent .cod-btn { padding: 6px 12px; border: 1px solid var(--grid); background: var(--panel-2); cursor: pointer; border-radius: 4px; font-size: 11px; transition: all 0.2s; }
+  #prorrateoContent .cod-btn:hover { background: var(--grid-soft); }
+  #prorrateoContent .cod-btn.active { background: #c41e3a; color: white; border-color: #c41e3a; }
+  #prorrateoContent .cod-btn.special { background: #4caf50; color: white; border-color: #4caf50; font-weight: bold; }
+  #prorrateoContent .cod-btn.special:hover { background: #45a049; }
+  #prorrateoContent .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+  #prorrateoContent .stat-box { background: var(--panel-2); padding: 20px; border-radius: 8px; text-align: center; border-left: 4px solid #c41e3a; }
+  #prorrateoContent .stat-number { font-size: 32px; font-weight: bold; color: #c41e3a; }
+  #prorrateoContent .stat-label { font-size: 12px; color: var(--ink-dim); margin-top: 5px; }
+  #prorrateoContent table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; position: relative; }
+  #prorrateoContent th { background: #c41e3a; color: white; padding: 10px; text-align: left; font-weight: bold; cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 2; }
+  #prorrateoContent th:hover { background: #a01730; }
+  #prorrateoContent td { border: 1px solid var(--grid); padding: 8px; }
+  #prorrateoContent tr:nth-child(even) { background: var(--panel-2); }
+  #prorrateoContent tr.total-row { background: #fff3cd; font-weight: bold; }
+  #prorrateoContent .text-right { text-align: right; }
+  #prorrateoContent .text-center { text-align: center; }
+  #prorrateoContent .sticky-col { position: sticky; background: white; z-index: 1; border-right: 2px solid #c41e3a; }
+  #prorrateoContent th.sticky-col { background: #c41e3a; color: white; }
+  #prorrateoContent .scroll-wrapper { overflow-x: auto; border: 1px solid var(--grid); border-radius: 4px; padding: 15px; background: white; }
+  #prorrateoContent .tab-buttons { display: flex; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--grid); }
+  #prorrateoContent .tab-btn { padding: 10px 15px; border: none; background: transparent; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink-dim); border-bottom: 3px solid transparent; transition: all 0.2s; }
+  #prorrateoContent .tab-btn:hover { color: var(--ink); }
+  #prorrateoContent .tab-btn.active { color: #c41e3a; border-bottom-color: #c41e3a; }
+  #prorrateoContent .tab-content { display: none; }
+  #prorrateoContent .tab-content.active { display: block; }
+  #prorrateoContent .messages { min-height: 40px; margin-bottom: 20px; }
+  #prorrateoContent .info { background: #e8f5e9; color: #2e7d32; padding: 12px; border-radius: 4px; border-left: 4px solid #2e7d32; font-size: 12px; }
+  #prorrateoContent .error { background: #ffebee; color: #c62828; padding: 12px; border-radius: 4px; border-left: 4px solid #c62828; font-size: 12px; }
+  #prorrateoContent .files-list { background: #e8f5e9; border: 1px solid #4caf50; border-radius: 4px; padding: 12px; margin-bottom: 20px; }
+  #prorrateoContent .files-list h3 { color: #2e7d32; font-size: 13px; margin-bottom: 8px; }
+  #prorrateoContent .files-list ul { list-style: none; padding: 0; }
+  #prorrateoContent .files-list li { font-size: 12px; color: #2e7d32; padding: 3px 0; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <nav class="sidenav">
+    <div class="nav-brand">
+      <div class="t1">CONTROL DE PROYECTOS</div>
+      <div class="t2">Curvas S · Gantt · Velocímetro</div>
+    </div>
+    <div class="nav-item" data-page="import"><span class="nav-icon">📥</span><span>Importar Excel</span><span class="count-pill" id="navFileCount">0</span></div>
+    <div class="nav-item active" data-page="tracking"><span class="nav-icon">📊</span><span>Seguimiento de Proyectos</span><span class="count-pill" id="navProjCount">0</span></div>
+    <div class="nav-item" data-page="responsables"><span class="nav-icon">👤</span><span>Responsables</span><span class="count-pill" id="navRespCount">0</span></div>
+  <div class="nav-item" data-page="entregables">
+    <span class="nav-icon">📦</span>
+    <span>Entregables</span>
+    <span class="count-pill" id="navEntregablesCount">0</span>
+  </div>
+  </nav>
+
+  <div class="content">
+    <header class="page-header">
+      <div class="accent-bar"></div>
+      <div>
+        <h1 id="pageTitle">Portal de Control de Proyectos</h1>
+        <p class="subtitle" id="pageSubtitle">—</p>
+      </div>
+    </header>
+
+    <div class="page-body">
+
+      <!-- ============ IMPORTAR EXCEL ============ -->
+      <div class="page-section active" id="page-import">
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding: 16px 0; border-bottom: 2px solid var(--grid);">
+          <img src="logo_r_engineering.png" alt="" style="height: 60px; width: auto;">
+          <div>
+            <h2 style="margin: 0; color: var(--ink); font-size: 24px; font-weight: 600;">Reporte de Avance</h2>
+            <p style="margin: 4px 0 0 0; color: var(--ink-faint); font-size: 13px;">Sistema de Seguimiento de Proyectos</p>
+          </div>
+        </div>
+        <div class="dropzone" id="dropzone">
+          <h3>Carga tu planilla de Control</h3>
+          <p>Formato: hojas "Gantt" y "Curva S" / "% Línea Base"</p>
+          <button class="btn" id="pickBtn">Importar Excel</button>
+          <input type="file" id="fileInput" accept=".xlsx">
+        </div>
+        <div class="filebar" id="filebar"></div>
+        <div class="errors" id="errors"></div>
+        <div class="btnrow">
+          <button class="btn" id="clearBtn" style="background:linear-gradient(135deg, #E74C3C 0%, #C0392B 100%); box-shadow:0 4px 12px rgba(231,76,60,0.25);">Limpiar todo</button>
+        </div>
+      </div>
+
+      <!-- ============ SEGUIMIENTO DE PROYECTOS ============ -->
+      <div class="page-section" id="page-tracking">
+        <div id="trackingEmpty" class="main-empty">Importa un Excel con la pestaña "gantt" para ver aquí el seguimiento del proyecto.</div>
+
+        <div id="trackingContent" style="display:none;">
+          <div class="proj-select-row" id="projSelectRow"></div>
+
+          <div class="cutoff-block hidden" id="cutoffBar">
+            <label>Fecha de corte
+              <input type="date" id="cutoffInput">
+            </label>
+            <div class="range" id="cutoffRange"></div>
+          </div>
+
+          <div class="tabs-container">
+            <div class="tabs-header">
+              <button class="tab-button active" data-tab="curva">📊 Curva S</button>
+              
+              <button class="tab-button" data-tab="gantt">📅 Diagrama de Gantt</button>
+            </div>
+            
+            <div class="tabs-content active" id="tab-curva">
+              <div class="tabs-body" id="curvaBody"></div>
+            </div>
+            
+
+            <div class="tabs-content" id="tab-gantt">
+              <div class="tabs-body" id="ganttBody"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ RESPONSABLES ============ -->
+      <div class="page-section" id="page-responsables">
+        <div id="responsablesEmpty" class="main-empty">Importa un Excel con la pestaña "gantt" para ver aquí el cronograma por responsable.</div>
+
+        <div id="responsablesContent" style="display:none;">
+
+
+          <div class="tabs-container">
+            <div class="tabs-header">
+              <button class="tab-button active" data-tab="resp-gantt">👤 Cronograma por Responsable</button>
+              
+              <button class="tab-button" data-tab="resp-calendar-by-person">👥 Calendario por Responsable</button>
+            </div>
+            
+            <div class="tabs-content active" id="tab-resp-gantt">
+              <div class="tabs-body" id="respGanttBody"></div>
+            </div>
+
+            <div class="tabs-content" id="tab-resp-calendar">
+              <div class="tabs-body" id="respCalendarBody"></div>
+            </div>
+
+            <div class="tabs-content" id="tab-resp-calendar-by-person">
+              <div class="tabs-body" id="respCalendarByPersonBody"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-section" id="page-entregables">
+          <div id="entregablesEmpty" class="main-empty">Importa uno o más Excel para ver aquí los entregables.</div>
+
+          <div id="entregablesContent" style="display:none;">
+
+
+          <div class="tabs-container">
+            <div class="tabs-header">
+              <button class="tab-button active" data-tab="entregables-calendar-by-person">📊 Dashboard</button>
+              <button class="tab-button" data-tab="entregables-calendar">📅 Calendario de Entregables</button>
+            </div>
+          
+            <div class="tabs-content active" id="tab-entregables-calendar-by-person">
+              <div class="tabs-body" id="entregablesCalendarByPersonBody"></div>
+            </div>
+
+            <div class="tabs-content" id="tab-entregables-calendar">
+              <div class="tabs-body" id="entregablesCalendarBody"></div>
+            </div>
+          </div>
+      </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+const PROJECTS = []; // {file, name, semana_corte, hasta_el, week_labels, week_dates, prog, real, ganttRows}
+let selectedDate = null;       // global cutoff filter (Date object)
+let selectedProjectIdx = null; // which project is shown in "Seguimiento de Proyectos"
+let currentPage = 'import';
+let entregablesProjectFilter = '';    // 'inicio' | 'import' | 'tracking' | 'responsables' | 'entregables'
+let activeTab = 'curva'; // which tab is active in Seguimiento de Proyectos
+let respProjectFilter = ''; // filtro de proyecto en página Responsables
+let prorrateoProjectFilter = ''; // filtro de proyecto en página Prorrateo de HH
+
+/* ================= date helpers ================= */
+
+function toISODate(d){ return d.toISOString().slice(0,10); }
+
+function parseISODateOnly(s){
+  if(!s) return null;
+  const d = new Date(s + 'T00:00:00Z');
+  return isNaN(d) ? null : d;
+}
+
+function fmtDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${d.getUTCDate()} ${meses[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+function fmtDateShort(d){
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${d.getUTCDate()} ${meses[d.getUTCMonth()]}`;
+}
+
+function fmtDateDM(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const month = meses[d.getUTCMonth()];
+  return `${day}/${month}`;
+}
+
+function overallDateRange(){
+  let min = null, max = null;
+  PROJECTS.forEach(p=>{
+    p.week_dates.forEach(iso=>{
+      if(!iso) return;
+      const d = new Date(iso);
+      if(!min || d < min) min = d;
+      if(!max || d > max) max = d;
+    });
+  });
+  return {min, max};
+}
+
+function defaultCutoffDate(){
+  let d = null;
+  PROJECTS.forEach(p=>{
+    if(!p.hasta_el) return;
+    const pd = new Date(p.hasta_el);
+    if(!d || pd < d) d = pd;
+  });
+  return d;
+}
+
+function weekIndexForDate(project, date){
+  if(!date) return null;
+  
+  let idx = -1;
+  
+  console.log(`\n🔍 weekIndexForDate:`);
+  console.log(`  Buscando: ${date.toISOString().split('T')[0]}`);
+  console.log(`  Comparando ${project.week_dates.length} fechas:`);
+  
+  project.week_dates.forEach((iso, i)=>{
+    if(!iso) {
+      console.log(`    [${i}] null (skip)`);
+      return;
+    }
+    
+    const d = iso instanceof Date ? iso : new Date(iso);
+    const isLessOrEqual = d <= date;
+    const dateStr = iso instanceof Date ? iso.toISOString().split('T')[0] : iso.split('T')[0];
+    const week = i < project.week_labels.length ? project.week_labels[i] : '?';
+    
+    console.log(`    [${i}] ${dateStr} (${week}) ${isLessOrEqual ? '✓ BEFORE/EQUAL' : '✗ AFTER'}`);
+    
+    if(isLessOrEqual) idx = i;
+  });
+  
+  console.log(`  ➜ FINAL IDX: ${idx}`);
+  if(idx >= 0 && idx < project.week_labels.length){
+    console.log(`  ✅ Semana: ${project.week_labels[idx]}\n`);
+  }
+  
+  return idx;
+}
+
+// Shared by the project list, the Curva S tab and the gauge tab.
+function computeProjectStats(proj){
+  const cutIdx = weekIndexForDate(proj, selectedDate);
+  
+  // Debug: mostrar estado de proj (solo primera vez)
+  if(!proj._loggedOnce){
+    console.log(`📊 DATOS CARGADOS:`);
+    console.log(`  Semanas: ${proj.week_labels.length}`);
+    console.log(`    ${proj.week_labels.join(' | ')}`);
+    console.log(`  Fechas: ${proj.week_dates.length}`);
+    const dateStrs = proj.week_dates.map(d => {
+      if(d instanceof Date) return d.toISOString().split('T')[0];
+      if(typeof d === 'string') return d.split('T')[0];
+      return '—';
+    });
+    console.log(`    ${dateStrs.join(' | ')}`);
+    console.log(`  % Linea Base: ${proj.prog.length}`);
+    console.log(`    ${proj.prog.map(p => p !== null ? (p*100).toFixed(1)+'%' : '—').join(' | ')}`);
+    console.log(`  % Real: ${proj.real.length}`);
+    console.log(`    ${proj.real.map(r => r !== null ? (r*100).toFixed(1)+'%' : '—').join(' | ')}`);
+    proj._loggedOnce = true;
+  }
+  
+  let progCur = null, realCur = null, weekLabel = '—', subNote = '';
+  if(cutIdx === -1){
+    progCur = 0; realCur = 0; weekLabel = 'Sin iniciar'; subNote = 'el proyecto aún no comienza a esta fecha';
+  } else if(cutIdx !== null){
+    progCur = proj.prog[cutIdx] ?? null;
+    realCur = proj.real[cutIdx] ?? null;
+    weekLabel = proj.week_labels[cutIdx];
+  }
+  const diff = (progCur!==null && realCur!==null) ? (realCur - progCur) : null;
+  return {cutIdx, progCur, realCur, weekLabel, subNote, diff};
+}
+
+function fmtPct(v){
+  if(v===null || v===undefined || Number.isNaN(v)) return '—';
+  return (v*100).toFixed(0) + '%';
+}
+
+/* ================= Excel parsing ================= */
+
+function findGanttHeader(sheet){
+  // Método robusto: obtener TODOS los valores del sheet directamente
+  const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+  const rows = [];
+  
+  // Leer todas las filas
+  for(let row = range.s.r; row <= range.e.r; row++){
+    const rowData = [];
+    for(let col = range.s.c; col <= range.e.c; col++){
+      const cellAddr = XLSX.utils.encode_cell({r: row, c: col});
+      const cell = sheet[cellAddr];
+      rowData.push(cell ? cell.v : null);
+    }
+    rows.push(rowData);
+  }
+  
+  let name = null;
+  const row0 = rows[0] || [];
+  for(let c=0;c<20;c++){ if(row0[c]){ name = row0[c]; break; } }
+  
+  let semana_corte = null, hasta_el = null;
+  for(let r=0; r<Math.min(8, rows.length); r++){
+    const row = rows[r] || [];
+    for(let c=0;c<20;c++){
+      if(row[c] === 'Semana de corte:') semana_corte = row[c+1];
+      if(row[c] === 'hasta el:') hasta_el = row[c+1];
+    }
+  }
+  return {name, semana_corte, hasta_el};
+}
+
+function findCurvaSSheetName(workbook){
+  console.log('Buscando hoja "Curva S"...');
+  
+  // Buscar exactamente "Curva S"
+  if(workbook.Sheets['Curva S']) {
+    console.log('✓ Encontrada hoja: "Curva S"\n');
+    return 'Curva S';
+  }
+  
+  console.error('❌ No se encontró hoja "Curva S" en el Excel');
+  console.error('   Hojas disponibles:', workbook.SheetNames.join(', '));
+  return null;
+}
+
+function findCurvaS(sheet){
+  console.log('\n🔍 findCurvaS: leyendo "Curva S"...');
+  
+  const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+  const data = {};
+  
+  // Leer todas las celdas
+  for(let r = range.s.r; r <= range.e.r; r++){
+    for(let c = range.s.c; c <= range.e.c; c++){
+      const cellAddr = XLSX.utils.encode_cell({r, c});
+      const cell = sheet[cellAddr];
+      if(cell) data[cellAddr] = cell.v;
+    }
+  }
+  
+  const getCell = (r, c) => data[XLSX.utils.encode_cell({r, c})] || null;
+  const getRow = (r) => {
+    const row = [];
+    for(let c = 0; c < 50; c++){  // Leer hasta 50 columnas
+      row.push(getCell(r, c));
+    }
+    return row;
+  };
+  
+  let week_labels = [], week_dates = [], prog = [], real = [];
+  
+  // ⭐ PASO 1: Buscar fila con S1, S2, S3...
+  console.log('  Buscando S1 en la hoja...');
+  let s1Row = -1, s1Col = -1;
+  
+  for(let r = 0; r < 20; r++){
+    const row = getRow(r);
+    for(let c = 0; c < row.length; c++){
+      const cell = row[c];
+      if(typeof cell === 'string' && cell.trim() === 'S1'){
+        s1Row = r;
+        s1Col = c;
+        console.log(`  ✓ S1 encontrado: Fila ${r}, Columna ${c}`);
+        break;
+      }
+    }
+    if(s1Row >= 0) break;
+  }
+  
+  if(s1Row < 0){
+    console.error('❌ No se encontró S1 en la hoja');
+    return {week_labels: [], week_dates: [], prog: [], real: []};
+  }
+  
+  // ⭐ PASO 2: Extraer semanas S1, S2, S3...
+  const semRow = getRow(s1Row);
+  for(let c = s1Col; c < semRow.length; c++){
+    const cell = semRow[c];
+    if(typeof cell === 'string' && /^S\d+$/.test(cell.trim())){
+      week_labels.push(cell.trim());
+    } else if(week_labels.length > 0) {
+      break;  // Parar cuando no encontremos más semanas
+    }
+  }
+  
+  console.log(`  ✓ Semanas: ${week_labels.length} [${week_labels.join(', ')}]`);
+  
+  if(week_labels.length === 0){
+    console.error('❌ No se encontraron semanas');
+    return {week_labels: [], week_dates: [], prog: [], real: []};
+  }
+  
+  // ⭐ PASO 3: Leer fechas (fila anterior a S1)
+  const dateRow = getRow(s1Row - 1);
+  console.log(`  Leyendo fechas de fila ${s1Row - 1}...`);
+  for(let i = 0; i < week_labels.length; i++){
+    const dateCell = dateRow[s1Col + i];
+    if(dateCell instanceof Date){
+      week_dates.push(dateCell);
+    } else {
+      week_dates.push(null);
+    }
+  }
+  console.log(`  ✓ Fechas: ${week_dates.filter(d => d !== null).length}/${week_labels.length}`);
+  
+  // ⭐ PASO 4: Leer % Linea Base (fila siguiente a S1)
+  const progRow = getRow(s1Row + 1);
+  console.log(`  Leyendo % Linea Base de fila ${s1Row + 1}...`);
+  for(let i = 0; i < week_labels.length; i++){
+    const progCell = progRow[s1Col + i];
+    if(typeof progCell === 'number'){
+      prog.push(progCell);
+    } else {
+      prog.push(null);
+    }
+  }
+  console.log(`  ✓ % Linea Base: ${prog.filter(p => p !== null).length}/${week_labels.length}`);
+  
+  // ⭐ PASO 5: Leer % Real (fila r+3, la que tiene label "% Real")
+  const realRow = getRow(s1Row + 3);
+  console.log(`  Leyendo % Real de fila ${s1Row + 3}...`);
+  for(let i = 0; i < week_labels.length; i++){
+    const realCell = realRow[s1Col + i];
+    if(typeof realCell === 'number'){
+      real.push(realCell);
+    } else {
+      real.push(null);
+    }
+  }
+  console.log(`  ✓ % Real: ${real.filter(r => r !== null).length}/${week_labels.length}`);
+  
+  // Si % Real está vacío, llenar con 0s
+  const hasRealData = real.some(r => r !== null && r !== undefined);
+  if(!hasRealData){
+    console.log('  ⚠️  % Real vacío → mostrando como 0%');
+    real = new Array(week_labels.length).fill(0);
+  }
+  
+  console.log(`✅ findCurvaS: ${week_labels.length} semanas listos\n`);
+  
+  return {
+    week_labels,
+    week_dates,
+    prog,
+    real
+  };
+}
+
+// Activity list from the "Gantt" sheet, used to draw the Gantt diagram tab.
+function findGanttActivities(sheet){
+  // Método robusto: obtener TODOS los valores del sheet directamente
+  const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+  const rows = [];
+  
+  // Leer todas las filas
+  for(let row = range.s.r; row <= range.e.r; row++){
+    const rowData = [];
+    for(let col = range.s.c; col <= range.e.c; col++){
+      const cellAddr = XLSX.utils.encode_cell({r: row, c: col});
+      const cell = sheet[cellAddr];
+      rowData.push(cell ? cell.v : null);
+    }
+    rows.push(rowData);
+  }
+  
+  console.log('🔍 findGanttActivities: Total rows in sheet:', rows.length);
+  
+  let headerRowIdx = -1, colMap = {};
+  
+  // BÚSQUEDA DINÁMICA: encontrar el header
+  for(let r=0; r<Math.min(rows.length, 15); r++){
+    const row = rows[r] || [];
+    if(!row.length) continue;
+    
+    let headerCount = 0;
+    for(let c=0; c<row.length; c++){
+      const cell = row[c];
+      if(typeof cell === 'string'){
+        const label = cell.toLowerCase().trim();
+        if(['n', 'cod', 'nivel', 'wbs', 'actividad', 'tipo', 'inicio', 'fin', 'días', 'responsable', 'costo total'].includes(label)){
+          headerCount++;
+          colMap[label] = c;
+        }
+      }
+    }
+    
+    if(headerCount >= 6){
+      headerRowIdx = r;
+      console.log(`✓ Header encontrado en fila ${r} con ${headerCount} columnas`);
+      console.log('  Mapa de columnas:', colMap);
+      break;
+    }
+  }
+  
+  if(headerRowIdx === -1){
+    console.error('❌ No se encontró header válido');
+    return [];
+  }
+
+  const cN = colMap['n'], cCod = colMap['cod'], cNivel = colMap['nivel'], 
+        cWbs = colMap['wbs'], cAct = colMap['actividad'], cTipo = colMap['tipo'],
+        cIni = colMap['inicio'], cFin = colMap['fin'], cDias = colMap['días'],
+        cResp = colMap['responsable'], cCosto = colMap['costo total'];
+
+  const activities = [];
+  let skipped = {noAct: 0, noDate: 0, wbs0: 0};
+  
+  // Datos comienzan después del header
+  for(let r=headerRowIdx+1; r<rows.length; r++){
+    const row = rows[r] || [];
+    if(!row || !row.length) continue;
+    
+    const actividad = cAct!==undefined ? row[cAct] : null;
+    const inicio = cIni!==undefined ? row[cIni] : null;
+    const fin = cFin!==undefined ? row[cFin] : null;
+    
+    // Skip si no tiene actividad
+    if(!actividad) { skipped.noAct++; continue; }
+    
+    // Skip si no tiene fechas válidas
+    if(!(inicio instanceof Date) || !(fin instanceof Date)) { 
+      skipped.noDate++; 
+      continue; 
+    }
+    
+    const wbsRaw = cWbs!==undefined ? row[cWbs] : null;
+    const wbsStr = (wbsRaw===null || wbsRaw===undefined) ? '' : String(wbsRaw).trim();
+    
+    // Skip project summary row (WBS = 0)
+    const wbsNum = typeof wbsRaw === 'number' ? wbsRaw : parseFloat(String(wbsRaw));
+    if(wbsNum === 0) { skipped.wbs0++; continue; }
+    
+    const level = wbsStr ? wbsStr.split('.').length : 1;
+    const tipo = cTipo!==undefined ? row[cTipo] : null;
+    const cod = cCod!==undefined ? row[cCod] : null;
+    const responsable = cResp!==undefined ? row[cResp] : null;
+    const nivel = cNivel!==undefined ? row[cNivel] : null;
+    
+    activities.push({
+      cod: cod !== null ? String(cod).trim() : '—',
+      wbs: wbsStr,
+      level,
+      nivel: nivel ? String(nivel).trim() : '',
+      tipo: tipo ? String(tipo).trim() : '-',
+      actividad: String(actividad).trim(),
+      inicio: inicio.toISOString(),
+      fin: fin.toISOString(),
+      real: null,
+      responsable: responsable ? String(responsable).trim() : '—',
+      estado: '',
+      pendientePor: '',
+      diferencia: null,
+    });
+  }
+  
+  console.log(`✓ Actividades extraídas: ${activities.length}`);
+  console.log(`  Skipped: noAct=${skipped.noAct}, noDate=${skipped.noDate}, wbs0=${skipped.wbs0}`);
+  if(activities.length > 0) console.log('  Primera actividad:', activities[0]);
+  
+  return activities;
+}
+
+function extractProject(workbook, filename){
+  const curvaSheetName = findCurvaSSheetName(workbook);
+  if(!workbook.Sheets['Gantt'] || !curvaSheetName){
+    throw new Error(`"${filename}" no tiene las hojas "Gantt" y "Curva S" / "% Línea Base" esperadas.`);
+  }
+  const {name, semana_corte, hasta_el} = findGanttHeader(workbook.Sheets['Gantt']);
+  const {week_labels, week_dates, prog, real} = findCurvaS(workbook.Sheets[curvaSheetName]);
+
+  if(!week_labels.length){
+    throw new Error(`"${filename}": no se pudo leer la tabla de semanas en la hoja "${curvaSheetName}".`);
+  }
+
+  const ganttRows = findGanttActivities(workbook.Sheets['Gantt']);
+  const prorrateoData = extractProrrrateoHH(workbook.Sheets['Gantt']);
+
+  return {
+    file: filename,
+    name: name || filename,
+    semana_corte,
+    hasta_el: hasta_el instanceof Date ? hasta_el.toISOString() : hasta_el,
+    week_labels,
+    week_dates: week_dates.map(d => d instanceof Date ? d.toISOString() : d),
+    prog,
+    real,
+    ganttRows,
+    prorrateoData,
+  };
+}
+
+/* ================= Curva S chart ================= */
+
+function buildChart(proj, cutIdx, W, H){
+  const padL = 40, padR = 14, padT = 14, padB = 80;  // Aumentado padB para labels
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const n = proj.week_labels.length;
+  
+  if(n < 2) return '<div>No hay datos de semanas</div>';
+  
+  const x = i => padL + (innerW * i) / (n - 1);
+  const y = v => padT + innerH * (1 - Math.max(0, Math.min(1, v || 0)));
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">`;
+
+  // Grid horizontal (% lines)
+  [0,0.25,0.5,0.75,1].forEach(v=>{
+    const yy = y(v);
+    svg += `<line class="grid-line" x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}"/>`;
+    svg += `<text class="axis-label" x="${padL-8}" y="${yy+3}" text-anchor="end">${Math.round(v*100)}%</text>`;
+  });
+
+  // Línea de corte
+  if(cutIdx !== null && cutIdx >= 0 && cutIdx < n){
+    const cx = x(cutIdx);
+    svg += `<line class="cur-line" x1="${cx}" y1="${padT}" x2="${cx}" y2="${H-padB}"/>`;
+  }
+
+  // MOSTRAR TODAS LAS SEMANAS (sin step)
+  for(let i=0; i<n; i++){
+    const px = x(i);
+    // Grid vertical
+    svg += `<line x1="${px}" y1="${padT}" x2="${px}" y2="${padT+innerH}" stroke="var(--grid)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+    
+    // Labels horizontales abajo del gráfico
+    const label = proj.week_labels[i] || '';
+    // Poner label cada semana, inclinado 45 grados
+    svg += `<text x="${px}" y="${padT+innerH+20}" font-size="10" fill="var(--ink-faint)" text-anchor="middle" transform="rotate(45 ${px} ${padT+innerH+20})">${label}</text>`;
+  }
+
+  // Curva Programado
+  const planVals = proj.prog.map((v,i)=>[i,v]).filter(([,v]) => v!==null && v!==undefined);
+  if(planVals.length){
+    svg += `<polyline class="plan-line" points="${planVals.map(([i,v])=>`${x(i)},${y(v)}`).join(' ')}"/>`;
+    planVals.forEach(([i,v])=>{ svg += `<circle class="plan-pt" cx="${x(i)}" cy="${y(v)}" r="2.5"/>`; });
+  }
+
+  // Curva Real
+  const realVals = proj.real
+    .map((v,i)=>[i,v])
+    .filter(([i,v]) => v!==null && v!==undefined && (cutIdx===null || i<=cutIdx));
+  if(realVals.length){
+    svg += `<polyline class="real-line" points="${realVals.map(([i,v])=>`${x(i)},${y(v)}`).join(' ')}"/>`;
+    realVals.forEach(([i,v])=>{ svg += `<circle class="real-pt" cx="${x(i)}" cy="${y(v)}" r="3"/>`; });
+  }
+
+  svg += `</svg>`;
+  return svg;
+}
+
+/* ================= Gauge ================= */
+
+function buildGauge(stats){
+  const {progCur, realCur} = stats;
+  if(realCur === null || progCur === null){
+    return `<div class="gantt-empty">Sin datos suficientes para esta fecha de corte.</div>`;
+  }
+
+  const W = 320, H = 190;
+  const cx = W/2, cy = 168, R = 130;
+  const toRad = deg => deg * Math.PI / 180;
+  const angleFor = v => 180 - Math.max(0, Math.min(1, v)) * 180;
+  const pt = (angleDeg, r) => {
+    const rad = toRad(angleDeg);
+    return [cx + r*Math.cos(rad), cy - r*Math.sin(rad)];
+  };
+  const arcPath = (a0, a1, r) => {
+    const [x0,y0] = pt(a0, r);
+    const [x1,y1] = pt(a1, r);
+    const large = Math.abs(a0-a1) > 180 ? 1 : 0;
+    return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`;
+  };
+
+  const p = progCur;
+  const redEnd = Math.max(0, p - 0.12);
+  const amberEnd = Math.min(1, Math.max(redEnd, p));
+  const trackW = 20;
+
+  let svg = `<svg class="gauge-svg" viewBox="0 0 ${W} ${H}" width="100%">`;
+  svg += `<path d="${arcPath(180,0,R)}" fill="none" stroke="var(--grid-soft)" stroke-width="${trackW+4}" stroke-linecap="round"/>`;
+  if(redEnd > 0){
+    svg += `<path d="${arcPath(angleFor(0), angleFor(redEnd), R)}" fill="none" stroke="var(--neg)" stroke-width="${trackW}" stroke-linecap="round" opacity="0.85"/>`;
+  }
+  if(amberEnd > redEnd){
+    svg += `<path d="${arcPath(angleFor(redEnd), angleFor(amberEnd), R)}" fill="none" stroke="var(--amber)" stroke-width="${trackW}" opacity="0.9"/>`;
+  }
+  if(amberEnd < 1){
+    svg += `<path d="${arcPath(angleFor(amberEnd), angleFor(1), R)}" fill="none" stroke="var(--pos)" stroke-width="${trackW}" stroke-linecap="round" opacity="0.85"/>`;
+  }
+
+  const [tx0,ty0] = pt(angleFor(p), R - trackW/2 - 3);
+  const [tx1,ty1] = pt(angleFor(p), R + trackW/2 + 7);
+  svg += `<line x1="${tx0}" y1="${ty0}" x2="${tx1}" y2="${ty1}" stroke="var(--ink)" stroke-width="2.5"/>`;
+
+  const needleAngle = angleFor(realCur);
+  const [nx,ny] = pt(needleAngle, R - trackW - 14);
+  svg += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="var(--real)" stroke-width="4" stroke-linecap="round"/>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="9" fill="var(--real)"/>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="4" fill="var(--panel)"/>`;
+
+  svg += `<text x="${cx-R-4}" y="${cy+16}" text-anchor="start" class="axis-label" style="font-size:11px;">0%</text>`;
+  svg += `<text x="${cx}" y="${cy-R-12}" text-anchor="middle" class="axis-label" style="font-size:11px;">50%</text>`;
+  svg += `<text x="${cx+4}" y="${cy+16}" text-anchor="end" class="axis-label" style="font-size:11px;">100%</text>`;
+  svg += `</svg>`;
+
+  const readout = `
+    <div class="gauge-readout">
+      <div class="big">${fmtPct(realCur)}</div>
+      <div class="lbl">% Real · objetivo (línea negra) ${fmtPct(progCur)}</div>
+    </div>`;
+
+  return `<div class="gauge-wrap"><div class="gauge-svg-wrap">${svg}</div>${readout}</div>`;
+}
+
+/* ================= Gantt diagram ================= */
+
+// Calcular % real estimado de una actividad basado en la fecha de corte
+function calculateEstimatedProgress(activity, cutDate){
+  if(!cutDate) return null;
+  
+  const tStart = new Date(activity.inicio).getTime();
+  const tEnd = new Date(activity.fin).getTime();
+  const tCut = cutDate.getTime();
+  
+  // Si corte está antes de inicio: 0%
+  if(tCut <= tStart) return 0;
+  
+  // Si corte está después de fin: 100%
+  if(tCut >= tEnd) return 1;
+  
+  // Si corte está entre inicio y fin: porcentaje
+  const progress = (tCut - tStart) / (tEnd - tStart);
+  return Math.max(0, Math.min(1, progress));
+}
+
+function buildGanttChart(proj){
+  // Mostrar solo actividades del proyecto actual
+  const allRows = proj.ganttRows || [];
+  
+  if(!allRows.length){
+    console.error('❌ buildGanttChart: No activities found!');
+    console.error('   proj:', proj);
+    console.error('   proj.ganttRows:', proj.ganttRows);
+    return `<div class="gantt-empty">❌ No se encontraron actividades en proj.ganttRows</div>`;
+  }
+  console.log('✓ buildGanttChart: Processing', allRows.length, 'activities');
+  if(allRows.length > 0) console.log('  First activity:', allRows[0]);
+
+  // Calcular estadísticas del proyecto
+  const stats = computeProjectStats(proj);
+  
+  // Calcular escala de tiempo
+  const times = allRows.flatMap(r => [new Date(r.inicio).getTime(), new Date(r.fin).getTime()]);
+  const minT = Math.min(...times), maxT = Math.max(...times);
+  const span = (maxT - minT) || 1;
+  const pct = iso => ((new Date(iso).getTime() - minT) / span) * 100;
+
+  const nTicks = 6;
+  const ticksHtml = Array.from({length: nTicks+1}, (_, i) => {
+    const t = new Date(minT + span * i / nTicks);
+    const p = (i/nTicks) * 100;
+    return `<div class="g-tick" style="left:${p}%;">${fmtDateShort(t)}</div>`;
+  }).join('');
+
+  let cutoffTag = '';
+  // COMENTADO: No mostrar "Corte" en el Gantt
+  // if(selectedDate){
+  //   const cp = ((selectedDate.getTime() - minT) / span) * 100;
+  //   if(cp >= 0 && cp <= 100){
+  //     cutoffTag = `<div class="g-cutoff-tag" style="left:${cp}%;">Corte</div>`;
+  //   }
+  // }
+
+  // Código del proyecto (3 primeras letras)
+  // const projCode = proj.name.substring(0, 3).toUpperCase(); // Ahora usamos r.cod del Excel
+
+  // Tabla de detalles + Gantt chart
+  console.log('buildGanttChart: First row:', allRows[0]);
+  
+  const tableHtml = allRows.map((r, idx)=>{
+    if(idx === 0) console.log('Processing first activity:', r.actividad, 'WBS:', r.wbs);
+    const isMilestone = String(r.tipo).toLowerCase().includes('hito');
+    const isGroup = r.level === 1 && (r.tipo === '-' || !r.tipo || String(r.tipo).trim() === '');
+    const left = pct(r.inicio);
+    const width = Math.max(pct(r.fin) - left, 0.6);
+    
+    // ⭐ ARREGLO: Calcular % estimado basado en fecha de corte
+    const estimatedProgress = calculateEstimatedProgress(r, selectedDate);
+    const realPct = estimatedProgress===null ? 0 : Math.max(0, Math.min(1, estimatedProgress)) * 100;
+    const displayPct = estimatedProgress===null ? null : estimatedProgress;
+
+    let barHtml;
+    if(isMilestone){
+      barHtml = `<div class="g-milestone" style="left:${pct(r.fin)}%;" title="${r.actividad}"></div>`;
+    } else if(isGroup){
+      barHtml = `<div class="g-group" style="left:${left}%; width:${width}%;" title="${r.actividad}"></div>`;
+    } else {
+      barHtml = `<div class="g-bar" style="left:${left}%; width:${width}%; background:rgba(61,122,139,0.25); border:1px solid var(--plan);" title="${r.actividad} — ${fmtPct(displayPct)}"><div class="g-bar-fill" style="width:${realPct}%; background:var(--real); border-radius:3px;"></div></div>`;
+    }
+
+    const labelClass = isGroup ? 'gantt-label lvl1' : 'gantt-label';
+    const dateIni = fmtDateDM(r.inicio);
+    const dateFin = fmtDateDM(r.fin);
+    const advReal = fmtPct(displayPct);
+
+    return `
+      <div class="gantt-row" data-level="${r.level}">
+        <div class="gantt-col" data-col="0" style="font-size: 11px; color: var(--ink-faint); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">${r.wbs || '—'}</div>
+        <div class="gantt-col ${labelClass}" data-col="1" style="padding-left:${(r.level-1)*12 + 10}px; width: 180px;" title="${r.actividad}">${r.actividad}</div>
+        <div class="gantt-col" data-col="2" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateIni}</div>
+        <div class="gantt-col" data-col="3" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateFin}</div>
+        <div class="gantt-col" data-col="4" style="font-size: 12px; font-weight: 600; color: var(--real); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">${advReal}</div>
+        <div class="gantt-track">${barHtml}</div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="gantt-legend">
+      <div class="item"><span class="sw st"></span> Etapa (resumen)</div>
+      <div class="item"><span class="sw g"></span><span class="sw f" style="margin-left:-16px; width:8px;"></span> Actividad (% real)</div>
+      <div class="item"><span class="dia"></span> Hito</div>
+    </div>
+    <div class="gantt-wrap" style="overflow-x: auto; overflow-y: visible;">
+      <div class="gantt-header" data-gantt-header>
+        <div class="gantt-header-col" style="width: 70px;"><span>WBS</span><span class="gantt-resizer"></span></div>
+        <div class="gantt-header-col" style="width: 180px;"><span>Actividad</span><span class="gantt-resizer"></span></div>
+        <div class="gantt-header-col" style="width: 80px;"><span>Inicio</span><span class="gantt-resizer"></span></div>
+        <div class="gantt-header-col" style="width: 80px;"><span>Fin</span><span class="gantt-resizer"></span></div>
+        <div class="gantt-header-col" style="width: 70px; color: var(--real);"><span>% Real</span><span class="gantt-resizer"></span></div>
+        <div class="gantt-ticks">${ticksHtml}${cutoffTag}</div>
+      </div>
+      <div class="gantt-body">${tableHtml}</div>
+    </div>
+  `;
+}
+
+/* ================= Responsable Gantt (grouped by person) ================= */
+
+function buildResponsableGanttChart(projects, projectFilter = ''){
+  // Agrupar todas las actividades de todos los proyectos por responsable
+  const activitiesByResponsable = {};
+  const allProjects = projects.length > 0 ? projects : [];
+  
+  allProjects.forEach(proj => {
+    // Si hay filtro, saltar proyectos que no coincidan
+    if(projectFilter && proj.name !== projectFilter) return;
+    
+    if(proj.ganttRows){
+      proj.ganttRows.forEach(r => {
+        const resp = r.responsable || '—';
+        if(!activitiesByResponsable[resp]){
+          activitiesByResponsable[resp] = [];
+        }
+        activitiesByResponsable[resp].push({...r, projectName: proj.name, progArray: proj.prog, realArray: proj.real, weekLabels: proj.week_labels });
+      });
+    }
+  });
+
+  const responsables = Object.keys(activitiesByResponsable).sort();
+  if(!responsables.length){
+    return `<div class="gantt-empty">No se encontraron actividades con responsables.</div>`;
+  }
+
+  // Calcular escala de tiempo global
+  let allTimes = [];
+  responsables.forEach(resp => {
+    allTimes = allTimes.concat(
+      activitiesByResponsable[resp].flatMap(r => [new Date(r.inicio).getTime(), new Date(r.fin).getTime()])
+    );
+  });
+  
+  const minT = Math.min(...allTimes), maxT = Math.max(...allTimes);
+  const span = (maxT - minT) || 1;
+  const pct = iso => ((new Date(iso).getTime() - minT) / span) * 100;
+
+  const nTicks = 6;
+  const ticksHtml = Array.from({length: nTicks+1}, (_, i) => {
+    const t = new Date(minT + span * i / nTicks);
+    const p = (i/nTicks) * 100;
+    return `<div class="g-tick" style="left:${p}%;">${fmtDateShort(t)}</div>`;
+  }).join('');
+
+  // ELIMINAR cutoffTag - no mostrar "Corte"
+  let cutoffTag = '';
+  // Comentado: mostrar "Corte" en el Gantt
+  // if(selectedDate){
+  //   const cp = ((selectedDate.getTime() - minT) / span) * 100;
+  //   if(cp >= 0 && cp <= 100){
+  //     cutoffTag = `<div class="g-cutoff-tag" style="left:${cp}%;">Corte</div>`;
+  //   }
+  // }
+
+  // Construir tabla por responsable
+  let respHtml = '';
+  responsables.forEach(resp => {
+    const activities = activitiesByResponsable[resp];
+    
+    // Header del responsable
+    respHtml += `
+      <div style="background: var(--panel-2); padding: 12px 16px; margin-top: 16px; border-radius: 6px; font-weight: 600; color: var(--ink); border-left: 3px solid var(--real);">
+        👤 ${resp} (${activities.length} actividades)
+      </div>
+      <div class="gantt-wrap" style="overflow-x: auto; overflow-y: visible; margin-top: 8px;">
+        <div class="gantt-header" data-gantt-header>
+          <div class="gantt-header-col" style="width: 70px;"><span>WBS</span><span class="gantt-resizer"></span></div>
+          <div class="gantt-header-col" style="width: 180px;"><span>Actividad</span><span class="gantt-resizer"></span></div>
+          <div class="gantt-header-col" style="width: 80px;"><span>Inicio</span><span class="gantt-resizer"></span></div>
+          <div class="gantt-header-col" style="width: 80px;"><span>Fin</span><span class="gantt-resizer"></span></div>
+          <div class="gantt-header-col" style="width: 70px; color: var(--real);"><span>% Real</span><span class="gantt-resizer"></span></div>
+          <div class="gantt-ticks">${ticksHtml}${cutoffTag}</div>
+        </div>
+        <div class="gantt-body">
+    `;
+    activities.forEach(r => {
+      const isMilestone = String(r.tipo).toLowerCase().includes('hito');
+      const isGroup = r.level === 1 && (r.tipo === '-' || !r.tipo || String(r.tipo).trim() === '');
+      const left = pct(r.inicio);
+      const width = Math.max(pct(r.fin) - left, 0.6);
+      
+      // ⭐ ARREGLO: Calcular % estimado basado en fecha de corte
+      const estimatedProgress = calculateEstimatedProgress(r, selectedDate);
+      const realPct = estimatedProgress===null ? 0 : Math.max(0, Math.min(1, estimatedProgress)) * 100;
+      const displayPct = estimatedProgress===null ? null : estimatedProgress;
+
+      let barHtml;
+      if(isMilestone){
+        barHtml = `<div class="g-milestone" style="left:${pct(r.fin)}%;" title="${r.actividad}"></div>`;
+      } else if(isGroup){
+        barHtml = `<div class="g-group" style="left:${left}%; width:${width}%;" title="${r.actividad}"></div>`;
+      } else {
+        barHtml = `<div class="g-bar" style="left:${left}%; width:${width}%; background:rgba(61,122,139,0.25); border:1px solid var(--plan);" title="${r.actividad} — ${fmtPct(displayPct)}"><div class="g-bar-fill" style="width:${realPct}%; background:var(--real); border-radius:3px;"></div></div>`;
+      }
+
+      const labelClass = isGroup ? 'gantt-label lvl1' : 'gantt-label';
+      const dateIni = fmtDateDM(r.inicio);
+      const dateFin = fmtDateDM(r.fin);
+      const advReal = fmtPct(displayPct);
+
+      respHtml += `
+        <div class="gantt-row" data-level="${r.level}">
+          <div class="gantt-col" data-col="0" style="font-size: 11px; color: var(--ink-faint); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">${r.wbs || '—'}</div>
+          <div class="gantt-col ${labelClass}" data-col="2" style="padding-left:${(r.level-1)*12 + 10}px; width: 180px;" title="${r.actividad}">${r.actividad}</div>
+          <div class="gantt-col" data-col="3" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateIni}</div>
+          <div class="gantt-col" data-col="4" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateFin}</div>
+          <div class="gantt-col" data-col="5" style="font-size: 12px; font-weight: 600; color: var(--real); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">${advReal}</div>
+          <div class="gantt-track">${barHtml}</div>
+        </div>`;
+    });
+    
+    respHtml += `
+        </div>
+      </div>`;
+  });
+
+  return `
+    <div class="gantt-legend">
+      <div class="item"><span class="sw st"></span> Etapa (resumen)</div>
+      <div class="item"><span class="sw g"></span><span class="sw f" style="margin-left:-16px; width:8px;"></span> Actividad (% real)</div>
+      <div class="item"><span class="dia"></span> Hito</div>
+    </div>
+    ${respHtml}
+  `;
+}
+
+/* ================= Page navigation ================= */
+
+function setPage(page){
+  currentPage = page;
+  
+  // Mostrar/ocultar page sections
+  document.querySelectorAll('.page-section').forEach(el=>{
+    el.classList.toggle('active', el.id === 'page-' + page);
+  });
+  
+  // Activar nav item
+  document.querySelectorAll('.nav-item').forEach(el=>{
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+  
+  // Actualizar header
+  updateHeader();
+  
+  // Renderizar contenido específico
+  if(page === 'tracking') {
+    renderTracking();
+  } else if(page === 'responsables') {
+    renderResponsables();
+  } else if(page === 'entregables') {
+    renderEntregables();
+  } else if(page === 'prorrateo') {
+    renderProrrateo();
+  }
+}
+
+function updateHeader(){
+  const title = document.getElementById('pageTitle');
+  const sub = document.getElementById('pageSubtitle');
+  const hasProjects = PROJECTS.length > 0;
+  const dateTxt = selectedDate ? fmtDate(selectedDate.toISOString()) : '';
+
+  if(currentPage === 'inicio'){
+    title.textContent = 'Portal de Control de Proyectos';
+    sub.textContent = hasProjects
+      ? `${PROJECTS.length} proyecto(s) cargado(s) · fecha de corte: ${dateTxt}`
+      : 'Importa tu Excel para comenzar a ver el estado de tus proyectos.';
+  } else if(currentPage === 'import'){
+    title.textContent = 'Importar Excel';
+    sub.textContent = 'Carga tus planillas de control (.xlsx). Mismo formato: hojas "Gantt" y "Curva S" / "% Línea Base".';
+  } else if(currentPage === 'tracking'){
+    title.textContent = 'Seguimiento de Proyectos';
+    sub.textContent = hasProjects ? `${PROJECTS.length} proyecto(s) cargado(s)` : 'Aún no has importado ningún proyecto.';
+  } else if(currentPage === 'responsables'){
+    title.textContent = 'Cronograma por Responsable';
+    sub.textContent = hasProjects ? `${PROJECTS.length} proyecto(s) · fecha de corte: ${dateTxt}` : 'Aún no has importado ningún proyecto.';
+  } else if(currentPage === 'entregables'){
+    title.textContent = 'Entregables';
+    sub.textContent = hasProjects ? `${PROJECTS.length} proyecto(s) cargado(s)` : 'Importa tu Excel para ver entregables.';
+  } else if(currentPage === 'prorrateo'){
+    title.textContent = 'Prorrateo de HH';
+    sub.textContent = hasProjects ? `${PROJECTS.length} proyecto(s) · Horas prorratadas por semana y responsable` : 'Importa tu Excel para ver prorrateo de HH.';
+  }
+}
+
+document.querySelectorAll('.nav-item').forEach(el=>{
+  el.addEventListener('click', () => setPage(el.dataset.page));
+});
+
+/* ================= Tabs System (Curva S / Velocímetro / Gantt) ================= */
+
+function attachTabListeners(){
+  document.querySelectorAll('.tab-button').forEach(el=>{
+    el.addEventListener('click', () => {
+      const tabName = el.dataset.tab;
+      activeTab = tabName;
+      console.log('TAB CLICKED: ' + tabName);
+      
+      // Actualizar botones activos
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+      });
+      
+      // Actualizar contenido activo
+      document.querySelectorAll('.tabs-content').forEach(content => {
+        content.classList.toggle('active', content.id === 'tab-' + tabName);
+      });
+    });
+  });
+}
+
+attachTabListeners();
+
+/* ================= Column resizing system ================= */
+
+let resizingState = {
+  isResizing: false,
+  startX: 0,
+  startWidth: 0,
+  col: null,
+  wrap: null,
+  idx: null
+};
+
+function handleMouseMove(e){
+  if(!resizingState.isResizing) return;
+  const delta = e.clientX - resizingState.startX;
+  const newWidth = Math.max(40, resizingState.startWidth + delta);
+  resizingState.col.style.width = newWidth + 'px';
+  
+  const body = resizingState.wrap.querySelector('.gantt-body');
+  if(body){
+    const bodyCols = body.querySelectorAll(`[data-col="${resizingState.idx}"]`);
+    bodyCols.forEach(c => c.style.width = newWidth + 'px');
+  }
+}
+
+function handleMouseUp(e){
+  resizingState.isResizing = false;
+  resizingState.col = null;
+  resizingState.wrap = null;
+  document.body.style.cursor = 'auto';
+  document.body.style.userSelect = 'auto';
+}
+
+function initColumnResizing(){
+  // Limpiar listeners previos
+  document.removeEventListener('mousemove', handleMouseMove);
+  document.removeEventListener('mouseup', handleMouseUp);
+  
+  document.querySelectorAll('[data-gantt-header]').forEach(header => {
+    const wrap = header.closest('.gantt-wrap');
+    if(!wrap) return;
+    
+    const cols = header.querySelectorAll('.gantt-header-col');
+    cols.forEach((col, idx) => {
+      const resizer = col.querySelector('.gantt-resizer');
+      if(!resizer) return;
+      
+      // Remover listeners previos
+      // resizer.removeEventListener('mousedown', initResize);  // No necesario
+      resizer.addEventListener('mousedown', function initResize(e){
+        e.preventDefault();
+        e.stopPropagation();
+        resizingState.isResizing = true;
+        resizingState.startX = e.clientX;
+        resizingState.startWidth = col.offsetWidth;
+        resizingState.col = col;
+        resizingState.idx = idx;
+        resizingState.wrap = wrap;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+      });
+    });
+  });
+  
+  // Agregar listeners globales si no existen
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
+}
+
+// Reinicializar el resize después de cada render
+
+/* ================= Tracking page content ================= */
+
+
+function extractProrrrateoHH(worksheet){
+  console.log('DEBUG extractProrrrateoHH: iniciando...');
+  
+  if(!worksheet){
+    console.log('ERROR: worksheet es null');
+    return { actividades: [], responsables: [], semanas: [], hhPorResponsable: {} };
+  }
+  
+  const actividades = [];
+  
+  for(let row = 8; row < 200; row++){
+    const cod = worksheet['A' + row]?.v;
+    const nivel = worksheet['C' + row]?.v;
+    const wbs = worksheet['D' + row]?.v;
+    const actividad = worksheet['E' + row]?.v;
+    const tipo = worksheet['F' + row]?.v;
+    const inicio = worksheet['G' + row]?.v;
+    const fin = worksheet['H' + row]?.v;
+    const hhTotal = worksheet['L' + row]?.v;
+    const estado = worksheet['N' + row]?.v;
+    const pctOri = worksheet['P' + row]?.v;
+    const pctReal = worksheet['Q' + row]?.v;
+    const pctDif = worksheet['R' + row]?.v;
+    
+    if(!actividad) continue;
+    
+    actividades.push({
+      cod: cod || '',
+      nivel: nivel || '',
+      wbs: wbs || '',
+      actividad: String(actividad),
+      tipo: tipo || '',
+      inicio: inicio,
+      fin: fin,
+      hhTotal: typeof hhTotal === 'number' ? hhTotal : '',
+      estado: estado || '',
+      pctOri: typeof pctOri === 'number' ? (pctOri * 100).toFixed(1) : '',
+      pctReal: typeof pctReal === 'number' ? (pctReal * 100).toFixed(1) : '',
+      pctDif: typeof pctDif === 'number' ? (pctDif * 100).toFixed(1) : ''
+    });
+  }
+  
+  console.log('DEBUG extractProrrrateoHH: actividades encontradas: ' + actividades.length);
+  if(actividades.length > 0) console.log('  Primera: ' + actividades[0].actividad);
+  
+  return {
+    actividades: actividades,
+    responsables: [],
+    semanas: [],
+    hhPorResponsable: {}
+  };
+}
+
+
+function buildProrrateoTable(projects, projectFilter = ''){
+  console.log('buildProrrateoTable: proyectos=' + (projects ? projects.length : 0));
+  
+  if(!projects || projects.length === 0) return '<div style="padding:20px;">Sin proyectos</div>';
+  
+  const all_activities = [];
+  projects.forEach((p, idx) => {
+    if(projectFilter && p.name !== projectFilter) return;
+    if(!p.prorrateoData || !p.prorrateoData.actividades) return;
+    p.prorrateoData.actividades.forEach(a => all_activities.push(a));
+  });
+  
+  console.log('Total actividades: ' + all_activities.length);
+  if(all_activities.length === 0) return '<div style="padding:20px;">Sin datos</div>';
+  
+  const actToShow = all_activities.slice(0, 10);
+  
+  let html = '<div style="padding:20px; background:#fff; border:2px solid #c41e3a;">';
+  html += '<div style="color:green; font-weight:bold; font-size:16px; margin-bottom:20px;">✓ PRORRATEO CARGADO: ' + all_activities.length + ' actividades</div>';
+  html += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
+  html += '<tr style="background:#c41e3a; color:white; font-weight:bold;"><th style="border:1px solid #c41e3a; padding:12px; text-align:left;">Actividad</th><th style="border:1px solid #c41e3a; padding:12px; text-align:right;">HH</th></tr>';
+  
+  actToShow.forEach((a, i) => {
+    const bg = i%2?'#f5f5f5':'#fff';
+    html += '<tr style="background:' + bg + ';">';
+    html += '<td style="border:1px solid #ddd; padding:10px;">' + a.actividad + '</td>';
+    html += '<td style="border:1px solid #ddd; padding:10px; text-align:right; font-weight:bold;">' + (a.hhTotal || '-') + '</td>';
+    html += '</tr>';
+  });
+  
+  html += '</table>';
+  html += '<div style="margin-top:20px; color:#666; font-size:12px;">Mostrando ' + actToShow.length + ' de ' + all_activities.length + '</div>';
+  html += '</div>';
+  return html;
+}
+
+
+function buildProrrateoGrafico(projects, projectFilter = ''){
+  if(!projects || projects.length === 0) return '<div style="padding:20px;">Sin proyectos</div>';
+  
+  let total_hh = 0;
+  let total_act = 0;
+  
+  projects.forEach(p => {
+    if(projectFilter && p.name !== projectFilter) return;
+    if(!p.prorrateoData || !p.prorrateoData.actividades) return;
+    
+    p.prorrateoData.actividades.forEach(a => {
+      if(a.hhTotal) {
+        total_hh += Number(a.hhTotal);
+        total_act++;
+      }
+    });
+  });
+  
+  let html = '<div style="padding:20px; text-align:center;">';
+  html += '<div style="font-size:24px; font-weight:bold; color:#c41e3a;">' + total_hh + '</div>';
+  html += '<div style="color:#666; margin-top:8px;">Total HH asignadas</div>';
+  html += '<div style="color:#999; margin-top:4px; font-size:12px;">' + total_act + ' actividades</div>';
+  html += '</div>';
+  return html;
+}
+
+
+function renderProrrateo(){
+  if(currentPage !== 'prorrateo') return;
+  
+  const empty_el = document.getElementById('prorrateoEmpty');
+  const content_el = document.getElementById('prorrateoContent');
+  
+  const has_proj = PROJECTS.length > 0;
+  
+  empty_el.style.display = has_proj ? 'none' : 'block';
+  content_el.style.display = has_proj ? 'block' : 'none';
+  
+  if(!has_proj) return;
+  
+  updateHeader();
+  
+  // Botones de proyectos
+  const filterButtonsDiv = document.getElementById('prorrateoProjectFilterButtons');
+  filterButtonsDiv.innerHTML = PROJECTS.map((p, idx) => `
+    <button class="proj-pill ${idx===selectedProjectIdx ? 'active' : ''}" onclick="selectedProjectIdx=${idx}; render();" style="padding:8px 12px; border:1px solid var(--grid); background:${idx===selectedProjectIdx ? '#c41e3a' : 'white'}; color:${idx===selectedProjectIdx ? 'white' : 'var(--ink)'}; border-radius:4px; cursor:pointer; font-size:12px; font-weight:600;">${p.name}</button>
+  `).join('');
+  
+  const proj_idx = selectedProjectIdx !== null ? selectedProjectIdx : 0;
+  
+  // TAB 1: Dashboard - Tabla y Gráfico
+  const tabla_html = buildProrrateoTable(PROJECTS, proj_idx);
+  document.getElementById('prorrateoContent_Table').innerHTML = tabla_html;
+  
+  const grafico_el = document.getElementById('prorrateoChartsContainer');
+  if(grafico_el) {
+    grafico_el.style.display = 'block';
+    const grafico_html = buildProrrateoGrafico(PROJECTS, proj_idx);
+    document.querySelectorAll('#prorrateo-dashboard canvas').forEach(canvas => {
+      const ctx = canvas.getContext('2d');
+      if(ctx) {
+        // Gráficos serán renderizados por buildProrrateoGrafico si es necesario
+      }
+    });
+  }
+  
+  // TAB 2: Detalle - Usar misma tabla
+  document.getElementById('prorrateoStats').innerHTML = '';
+  document.getElementById('prorrateoStats').style.display = 'none';
+  
+  // TAB 3 & 4: HH por Día y Responsable - Mostrar tabla para ahora
+  document.getElementById('prorrateoContentDias').innerHTML = tabla_html;
+  document.getElementById('prorrateoContentResp').innerHTML = tabla_html;
+}
+
+
+function renderTracking(){
+  const empty = document.getElementById('trackingEmpty');
+  const content = document.getElementById('trackingContent');
+  const hasProjects = PROJECTS.length > 0;
+  if(empty) empty.style.display = hasProjects ? 'none' : 'block';
+  if(content) content.style.display = hasProjects ? 'block' : 'none';
+  if(!hasProjects) return;
+
+  // Los pills de proyecto se ocultan - no se necesitan después de importar
+  const pillRow = document.getElementById('projSelectRow');
+  if(pillRow) pillRow.style.display = 'none';
+  
+  // Seleccionar primer proyecto automáticamente
+  if(selectedProjectIdx === null && PROJECTS.length > 0) selectedProjectIdx = 0;
+
+  const proj = PROJECTS[selectedProjectIdx];
+  if(!proj) {
+    console.error('No hay proyecto seleccionado. PROJECTS:', PROJECTS);
+    return;
+  }
+  console.log('Rendering project:', proj.name, 'prog:', proj.prog, 'real:', proj.real);
+  const stats = computeProjectStats(proj);
+
+  const diffClass = stats.diff===null ? '' : (stats.diff >= 0 ? 'pos' : 'neg');
+  const diffSign = stats.diff===null ? '' : (stats.diff >= 0 ? '+' : '');
+  document.getElementById('curvaBody').innerHTML = `
+    <div class="legend">
+      <div class="item"><span class="swatch plan"></span> % Programado</div>
+      <div class="item"><span class="swatch real"></span> % Real</div>
+    </div>
+    <div class="chart-box">${buildChart(proj, stats.cutIdx, 760, 280)}</div>
+    <div class="stat-row">
+      <div class="stat">
+        <div class="k">% PROGRAMADO</div>
+        <div class="v">${fmtPct(stats.progCur)}</div>
+        <div class="sub">${stats.weekLabel}</div>
+      </div>
+      <div class="stat">
+        <div class="k">% REAL</div>
+        <div class="v">${fmtPct(stats.realCur)}</div>
+        <div class="sub">${stats.weekLabel}</div>
+      </div>
+      <div class="stat diff">
+        <div class="k">DIFERENCIA</div>
+        <div class="v ${diffClass}">${stats.diff===null ? '—' : diffSign + fmtPct(stats.diff)}</div>
+        <div class="sub">${stats.diff===null ? 'sin dato real a esta fecha' : (stats.diff>=0 ? 'adelantado' : 'atrasado')}</div>
+      </div>
+    </div>
+  `;
+
+  // Arreglar gauge (si existe el elemento)
+  const gaugeBody = document.getElementById('gaugeBody');
+  if(gaugeBody){
+    const gDiffClass = stats.diff===null ? '' : (stats.diff>=0 ? 'pos':'neg');
+    const gDiffSign = stats.diff===null ? '' : (stats.diff>=0 ? '+':'');
+    gaugeBody.innerHTML = `
+      ${buildGauge(stats)}
+      <div class="gauge-stats">
+        <div><span>% PROGRAMADO</span><b>${fmtPct(stats.progCur)}</b></div>
+        <div><span>% REAL</span><b>${fmtPct(stats.realCur)}</b></div>
+        <div><span>DIFERENCIA</span><b class="${gDiffClass}">${stats.diff===null ? '—' : gDiffSign + fmtPct(stats.diff)}</b></div>
+      </div>
+    `;
+  }
+
+  try {
+    const ganttBody = document.getElementById('ganttBody');
+    if(!ganttBody){
+      console.error('❌ Elemento ganttBody no encontrado en el DOM');
+      return;
+    }
+    const ganttHtml = buildGanttChart(proj);
+    console.log('Rendering Gantt for project:', proj.name, 'ganttRows:', proj.ganttRows ? proj.ganttRows.length : 0, 'html length:', ganttHtml.length);
+    ganttBody.innerHTML = ganttHtml;
+  } catch(e) {
+    console.error('❌ Error rendering Gantt:', e);
+  }
+}
+
+/* ================= Responsable Calendar (weekly view) ================= */
+
+// Paleta de colores para responsables
+const responsableColors = {};
+const projectColors = {};
+const colorPalette = [
+  '#FFE5E5', '#E5F5FF', '#E5FFE5', '#FFF5E5', '#F5E5FF', '#FFE5F5',
+  '#FFCCCC', '#CCE5FF', '#CCFFCC', '#FFCCCC', '#E5CCFF', '#FFCCF5'
+];
+
+function getResponsableColor(resp){
+  if(!responsableColors[resp]){
+    const colorIdx = Object.keys(responsableColors).length % colorPalette.length;
+    responsableColors[resp] = colorPalette[colorIdx];
+  }
+  return responsableColors[resp];
+}
+
+function getProjectColor(projectName){
+  if(!projectColors[projectName]){
+    const colorIdx = Object.keys(projectColors).length % colorPalette.length;
+    projectColors[projectName] = colorPalette[colorIdx];
+  }
+  return projectColors[projectName];
+}
+
+function buildResponsableCalendar(projects, projectFilter = ''){
+  // Recolectar todas las actividades
+  const activities = [];
+  const allProjects = projects.length > 0 ? projects : [];
+  const uniqueResponsables = new Set();
+  
+  allProjects.forEach(proj => {
+    if(projectFilter && proj.name !== projectFilter) return;
+    if(proj.ganttRows){
+      proj.ganttRows.forEach(r => {
+        activities.push({...r, projectName: proj.name});
+        uniqueResponsables.add(r.responsable || '—');
+      });
+    }
+  });
+
+  if(!activities.length){
+    return `<div style="padding: 20px; text-align: center; color: var(--ink-faint);">No hay actividades para mostrar.</div>`;
+  }
+
+  // Calcular rango de fechas
+  let allDates = activities.flatMap(a => [new Date(a.inicio).getTime(), new Date(a.fin).getTime()]);
+  const minTime = Math.min(...allDates);
+  const maxTime = Math.max(...allDates);
+  
+  // Generar semanas (iniciar en lunes)
+  const startDate = new Date(minTime);
+  const day1839 = startDate.getDay();
+  startDate.setDate(startDate.getDate() - (day1839 === 0 ? 6 : day1839 - 1));
+  
+  let calendarHtml = '<div style="display: flex; flex-direction: column; gap: 20px; padding: 16px;">';
+  
+  // Leyenda de responsables
+  calendarHtml += `<div style="background: var(--panel); padding: 12px 16px; border: 1px solid var(--grid); border-radius: 6px;">
+    <div style="font-weight: 600; color: var(--ink-dim); margin-bottom: 8px; font-size: 12px;">Leyenda de Responsables:</div>
+    <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+      ${Array.from(uniqueResponsables).sort().map(resp => {
+        const bgColor = getResponsableColor(resp);
+        return `<div style="display: flex; align-items: center; gap: 6px;">
+          <div style="width: 12px; height: 12px; background: ${bgColor}; border: 1px solid var(--real); border-radius: 2px;"></div>
+          <span style="font-size: 11px; color: var(--ink-dim);">👤 ${resp}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+  
+  let currentDate = new Date(startDate);
+  while(currentDate.getTime() <= maxTime){
+    const weekStart = new Date(currentDate);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    
+    const weekLabel = `${fmtDate(weekStart.toISOString())} — ${fmtDate(weekEnd.toISOString())}`;
+    
+    calendarHtml += `<div style="border: 1px solid var(--grid); border-radius: 8px; overflow: hidden;">
+      <div style="background: var(--panel-2); padding: 12px 16px; font-weight: 600; color: var(--ink-dim);">
+        📅 Semana del ${weekLabel}
+      </div>
+      <div style="overflow-x: auto; overflow-y: hidden; border-top: 1px solid var(--grid);">
+        <div style="display: grid; grid-template-columns: repeat(7, minmax(100px, 1fr)); gap: 1px; background: var(--grid); padding: 1px; min-width: 750px;">`;
+    
+    // Días de la semana
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    dayNames.forEach((dayName, dayIdx) => {
+      const dayDate = new Date(weekStart);
+      dayDate.setDate(dayDate.getDate() + dayIdx);
+      const dayActivities = activities.filter(a => {
+        const aStart = new Date(a.inicio);
+        const aEnd = new Date(a.fin);
+        return aStart.toDateString() <= dayDate.toDateString() && dayDate.toDateString() <= aEnd.toDateString();
+      });
+      
+      const dayNum = dayDate.getDate();
+      const monthIdx = dayDate.getMonth();
+      const monthName = meses[monthIdx];
+      
+      calendarHtml += `<div style="background: white; padding: 8px; min-height: 120px; border: 1px solid var(--grid);">
+        <div style="font-weight: 600; font-size: 11px; color: var(--ink); margin-bottom: 4px; white-space: nowrap;">
+          ${dayName} ${dayNum} ${monthName}
+        </div>
+        <div style="font-size: 10px; line-height: 1.4;">
+          ${dayActivities.length > 0 
+            ? dayActivities.map(a => {
+              const bgColor = getResponsableColor(a.responsable || '—');
+              return `
+              <div style="background: ${bgColor}; padding: 3px 4px; border-radius: 2px; margin-bottom: 3px; border-left: 2px solid var(--real); cursor: help;" title="${a.actividad}\nProyecto: ${a.projectName}">
+                <div style="font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 9px;">${a.actividad}</div>
+              </div>
+            `;
+            }).join('')
+            : '<div style="color: var(--ink-faint); font-size: 9px;">—</div>'
+          }
+        </div>
+      </div>`;
+    });
+    
+    calendarHtml += `</div></div></div>`;
+    
+    currentDate.setDate(currentDate.getDate() + 7);
+  }
+  
+  calendarHtml += '</div>';
+  return calendarHtml;
+}
+
+/* ================= Calendar by Responsable ================= */
+
+function buildCalendarByResponsable(projects, projectFilter = ''){
+  // Recolectar actividades por responsable
+  const activitiesByResponsable = {};
+  const allProjects = projects.length > 0 ? projects : [];
+  const uniqueProjects = new Set();
+  
+  allProjects.forEach(proj => {
+    if(projectFilter && proj.name !== projectFilter) return;
+    if(proj.ganttRows){
+      proj.ganttRows.forEach(r => {
+        const resp = r.responsable || '—';
+        if(!activitiesByResponsable[resp]){
+          activitiesByResponsable[resp] = [];
+        }
+        activitiesByResponsable[resp].push({...r, projectName: proj.name});
+        uniqueProjects.add(proj.name);
+      });
+    }
+  });
+
+  const responsables = Object.keys(activitiesByResponsable).sort();
+  if(!responsables.length){
+    return `<div style="padding: 20px; text-align: center; color: var(--ink-faint);">No hay actividades para mostrar.</div>`;
+  }
+
+  let calendarHtml = '<div style="display: flex; flex-direction: column; gap: 24px; padding: 16px;">';
+  
+  // Leyenda de proyectos (solo si hay múltiples proyectos)
+  if(uniqueProjects.size > 1 || projectFilter === ''){
+    calendarHtml += `<div style="background: var(--panel); padding: 12px 16px; border: 1px solid var(--grid); border-radius: 6px;">
+      <div style="font-weight: 600; color: var(--ink-dim); margin-bottom: 8px; font-size: 12px;">Leyenda de Proyectos:</div>
+      <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+        ${Array.from(uniqueProjects).sort().map(proj => {
+          // Buscar el cod del proyecto
+          let projCod = proj;
+          const projObj = allProjects.find(p => p.name === proj);
+          if(projObj && projObj.ganttRows && projObj.ganttRows.length > 0){
+            const firstCod = projObj.ganttRows[0].cod;
+            if(firstCod && firstCod !== '—'){
+              projCod = firstCod;
+            }
+          }
+          const bgColor = getProjectColor(proj);
+          return `<div style="display: flex; align-items: center; gap: 6px;">
+            <div style="width: 12px; height: 12px; background: ${bgColor}; border: 1px solid var(--real); border-radius: 2px;"></div>
+            <span style="font-size: 11px; color: var(--ink-dim);">${projCod}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  responsables.forEach(resp => {
+    const activities = activitiesByResponsable[resp];
+    const respBgColor = getResponsableColor(resp);
+    
+    // Calcular rango de fechas para este responsable
+    let allDates = activities.flatMap(a => [new Date(a.inicio).getTime(), new Date(a.fin).getTime()]);
+    const minTime = Math.min(...allDates);
+    const maxTime = Math.max(...allDates);
+    
+    // Generar semanas (iniciar en lunes)
+    const startDate = new Date(minTime);
+    const day1982 = startDate.getDay();
+    startDate.setDate(startDate.getDate() - (day1982 === 0 ? 6 : day1982 - 1));
+    
+    calendarHtml += `<div style="border: 2px solid; border-color: ${respBgColor}; border-radius: 8px; overflow: hidden;">
+      <div style="background: ${respBgColor}; padding: 14px 16px; font-weight: 600; color: var(--ink); border-bottom: 2px solid var(--real);">
+        👤 ${resp} (${activities.length} actividades)
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px; padding: 16px;">`;
+    
+    let currentDate = new Date(startDate);
+    while(currentDate.getTime() <= maxTime){
+      const weekStart = new Date(currentDate);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      
+      const weekLabel = `${fmtDate(weekStart.toISOString())} — ${fmtDate(weekEnd.toISOString())}`;
+      
+      calendarHtml += `<div style="border: 1px solid var(--grid); border-radius: 6px; overflow: hidden;">
+        <div style="background: var(--panel-2); padding: 10px 12px; font-size: 12px; font-weight: 500; color: var(--ink-dim);">
+          📅 ${weekLabel}
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(7, minmax(100px, 1fr)); gap: 1px; background: var(--grid); padding: 1px;">`;
+      
+      const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      dayNames.forEach((dayName, dayIdx) => {
+        const dayDate = new Date(weekStart);
+        dayDate.setDate(dayDate.getDate() + dayIdx);
+        const dayActivities = activities.filter(a => {
+          const aStart = new Date(a.inicio);
+          const aEnd = new Date(a.fin);
+          return aStart.toDateString() <= dayDate.toDateString() && dayDate.toDateString() <= aEnd.toDateString();
+        });
+        
+        const dayNum = dayDate.getDate();
+        const monthIdx = dayDate.getMonth();
+        const monthName = meses[monthIdx];
+        
+        calendarHtml += `<div style="background: white; padding: 8px; min-height: 100px; border: 1px solid var(--grid); display: flex; flex-direction: column;">
+          <div style="font-weight: 600; font-size: 11px; color: var(--ink); margin-bottom: 4px; white-space: nowrap;">
+            ${dayName} ${dayNum} ${monthName}
+          </div>
+          <div style="font-size: 9px; line-height: 1.3; flex: 1; overflow-y: auto;">
+            ${dayActivities.length > 0 
+              ? dayActivities.map(a => {
+                const projColor = getProjectColor(a.projectName);
+                return `
+                <div style="background: ${projColor}; padding: 3px 4px; border-radius: 2px; margin-bottom: 3px; border-left: 2px solid var(--real); cursor: help;" title="${a.actividad}
+Proyecto: ${a.projectName}">
+                  <div style="font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 9px;">${a.actividad}</div>
+                </div>
+              `;
+              }).join('')
+              : '<div style="color: var(--ink-faint); font-size: 9px;">—</div>'
+            }
+          </div>
+        </div>`;
+      });
+      
+      calendarHtml += `</div></div>`;
+      
+      currentDate.setDate(currentDate.getDate() + 7);
+    }
+    
+    calendarHtml += `</div></div>`;
+  });
+  
+  calendarHtml += '</div>';
+  return calendarHtml;
+}
+
+/* ================= Responsables page content ================= */
+
+
+
+function buildEntregablesGantt(projects, projectFilter = ''){
+  // Agrupar solo entregables por responsable
+  const activitiesByResponsable = {};
+  const allProjects = projects.length > 0 ? projects : [];
+  
+  allProjects.forEach(proj => {
+    if(projectFilter && proj.name !== projectFilter) return;
+    
+    if(proj.ganttRows){
+      proj.ganttRows.forEach(r => {
+        // Filtrar solo entregables
+        if(!r.tipo || !r.tipo.toLowerCase().includes('entregable')) return;
+        
+        const resp = r.responsable || '—';
+        if(!activitiesByResponsable[resp]){
+          activitiesByResponsable[resp] = [];
+        }
+        activitiesByResponsable[resp].push({...r, projectName: proj.name, progArray: proj.prog, realArray: proj.real, weekLabels: proj.week_labels });
+      });
+    }
+  });
+
+  const responsables = Object.keys(activitiesByResponsable).sort();
+  if(!responsables.length){
+    return `<div class="gantt-empty">No se encontraron entregables con responsables.</div>`;
+  }
+
+  // Calcular escala de tiempo global
+  let allTimes = [];
+  responsables.forEach(resp => {
+    allTimes = allTimes.concat(
+      activitiesByResponsable[resp].flatMap(r => [new Date(r.inicio).getTime(), new Date(r.fin).getTime()])
+    );
+  });
+  
+  const minT = Math.min(...allTimes), maxT = Math.max(...allTimes);
+  const span = (maxT - minT) || 1;
+  const pct = iso => ((new Date(iso).getTime() - minT) / span) * 100;
+
+  const nTicks = 6;
+  const ticksHtml = Array.from({length: nTicks+1}, (_, i) => {
+    const t = new Date(minT + span * i / nTicks);
+    const p = (i/nTicks) * 100;
+    return `<div class="g-tick" style="left:${p}%;">${fmtDateShort(t)}</div>`;
+  }).join('');
+
+  let cutoffTag = '';
+  if(selectedDate){
+    const cp = ((selectedDate.getTime() - minT) / span) * 100;
+    if(cp >= 0 && cp <= 100){
+      cutoffTag = `<div class="g-cutoff-tag" style="left:${cp}%;">Corte</div>`;
+    }
+  }
+
+  // Construir tabla por responsable
+  let respHtml = '';
+  responsables.forEach(resp => {
+    const activities = activitiesByResponsable[resp];
+    
+    // Header del responsable
+    respHtml += `
+      <div style="background: var(--panel-2); padding: 12px 16px; margin-top: 16px; border-radius: 6px; font-weight: 600; color: var(--ink); border-left: 3px solid var(--real);">
+        👤 ${resp} (${activities.length} entregables)
+      </div>
+      <div class="gantt-wrap" style="overflow-x: auto; overflow-y: visible; margin-top: 8px;">
+        <div class="gantt-header" data-gantt-header>
+          <div class="gantt-header-col" style="width: 70px;"><span>WBS</span><span class="gantt-resizer"></span></div>
+          <div class="gantt-header-col" style="width: 180px;"><span>Entregable</span><span class="gantt-resizer"></span></div>
+          <div class="gantt-header-col" style="width: 80px;"><span>Inicio</span><span class="gantt-resizer"></span></div>
+          <div class="gantt-header-col" style="width: 80px;"><span>Fin</span><span class="gantt-resizer"></span></div>
+          <div class="gantt-header-col" style="width: 70px; color: var(--plan);"><span>% Prog</span><span class="gantt-resizer"></span></div>
+          <div class="gantt-header-col" style="width: 70px; color: var(--plan);"><span>% Dif</span><span class="gantt-resizer"></span></div>
+          <div class="gantt-ticks">${ticksHtml}${cutoffTag}</div>
+        </div>
+        <div class="gantt-body">
+    `;
+    activities.forEach(r => {
+      const isMilestone = String(r.tipo).toLowerCase().includes('hito');
+      const isGroup = r.level === 1 && (r.tipo === '-' || !r.tipo || String(r.tipo).trim() === '');
+      const left = pct(r.inicio);
+      const width = Math.max(pct(r.fin) - left, 0.6);
+      const realPct = r.real===null ? 0 : Math.max(0, Math.min(1, r.real)) * 100;
+
+      let barHtml;
+      if(isMilestone){
+        barHtml = `<div class="g-milestone" style="left:${pct(r.fin)}%;" title="${r.actividad}"></div>`;
+      } else if(isGroup){
+        barHtml = `<div class="g-group" style="left:${left}%; width:${width}%;" title="${r.actividad}"></div>`;
+      } else {
+        barHtml = `<div class="g-bar" style="left:${left}%; width:${width}%; background:rgba(61,122,139,0.25); border:1px solid var(--plan);" title="${r.actividad} — ${fmtPct(r.real)}"><div class="g-bar-fill" style="width:${realPct}%; background:var(--real); border-radius:3px;"></div></div>`;
+      }
+
+      const labelClass = isGroup ? 'gantt-label lvl1' : 'gantt-label';
+      const dateIni = fmtDateDM(r.inicio);
+      const dateFin = fmtDateDM(r.fin);
+      const advReal = fmtPct(r.real);
+
+      respHtml += `
+        <div class="gantt-row" data-level="${r.level}">
+          <div class="gantt-col" data-col="0" style="font-size: 11px; color: var(--ink-faint); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">${r.wbs || '—'}</div>
+          <div class="gantt-col ${labelClass}" data-col="2" style="padding-left:${(r.level-1)*12 + 10}px; width: 180px;" title="${r.actividad}">${r.actividad}</div>
+          <div class="gantt-col" data-col="3" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateIni}</div>
+          <div class="gantt-col" data-col="4" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateFin}</div>
+          <div class="gantt-col" data-col="5" style="font-size: 12px; font-weight: 600; color: var(--real); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">${advReal}</div>
+          <div class="gantt-col" data-col="6" style="font-size: 12px; font-weight: 600; color: var(--plan); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">—</div>
+          <div class="gantt-col" data-col="7" style="font-size: 12px; font-weight: 600; color: var(--plan); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">—</div>
+          <div class="gantt-track">${barHtml}</div>
+        </div>`;
+    });
+    
+    respHtml += `
+        </div>
+      </div>`;
+  });
+
+  return `
+    <div class="gantt-legend">
+      <div class="item"><span class="sw st"></span> Etapa (resumen)</div>
+      <div class="item"><span class="sw g"></span><span class="sw f" style="margin-left:-16px; width:8px;"></span> Entregable (% real)</div>
+      <div class="item"><span class="dia"></span> Hito</div>
+    </div>
+    ${respHtml}
+  `;
+}
+
+
+
+
+
+function buildEntregablesCalendarWeekly(projects, projectFilter = ''){
+  // Paleta de colores
+  const colorPalette = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B', '#76D7C4'];
+  
+  // Recolectar todos los entregables
+  const activities = [];
+  const allProjects = projects.length > 0 ? projects : [];
+  const projectColorMap = {};
+  const uniqueProjects = {};
+  
+  // Crear mapa de proyectos con código y color
+  let projectColorIndex = 0;
+  allProjects.forEach(proj => {
+    let projCod = proj.name;
+    if(proj.ganttRows && proj.ganttRows.length > 0){
+      const firstCod = proj.ganttRows[0].cod;
+      if(firstCod && firstCod !== '—'){
+        projCod = firstCod;
+      }
+    }
+    projectColorMap[proj.name] = {
+      cod: projCod,
+      color: colorPalette[projectColorIndex % colorPalette.length]
+    };
+    uniqueProjects[proj.name] = projCod;
+    projectColorIndex++;
+  });
+  
+  // Recolectar SOLO entregables con validación estricta
+  const seenDeliverables = new Set();
+  allProjects.forEach(proj => {
+    if(projectFilter && proj.name !== projectFilter) return;
+    if(!proj.ganttRows || proj.ganttRows.length === 0) return;
+    
+    proj.ganttRows.forEach(r => {
+      // Validar que sea un entregable
+      const tipoStr = String(r.tipo).trim().toLowerCase();
+      if(!tipoStr.includes('entregable')) return;
+      
+      // Evitar duplicados usando un identificador único
+      const delivId = `${proj.name}_${r.cod}_${r.actividad}`;
+      if(seenDeliverables.has(delivId)) return;
+      seenDeliverables.add(delivId);
+      
+      // Validar que tenga fechas válidas
+      if(!r.inicio || !r.fin) return;
+      
+      activities.push({...r, projectName: proj.name});
+    });
+  });
+
+  if(!activities.length){
+    return `<div style="padding: 20px; text-align: center; color: var(--ink-faint);">No hay entregables para mostrar.</div>`;
+  }
+
+  // Calcular rango de fechas
+  let allDates = activities.flatMap(a => {
+    try {
+      return [new Date(a.inicio).getTime(), new Date(a.fin).getTime()];
+    } catch(e) {
+      return [];
+    }
+  });
+  
+  if(allDates.length === 0){
+    return `<div style="padding: 20px; text-align: center; color: var(--ink-faint);">No hay fechas válidas en los entregables.</div>`;
+  }
+  
+  const minTime = Math.min(...allDates);
+  const maxTime = Math.max(...allDates);
+  
+  // Generar semanas (iniciar en lunes)
+  const startDate = new Date(minTime);
+  const day2257 = startDate.getDay();
+  startDate.setDate(startDate.getDate() - (day2257 === 0 ? 6 : day2257 - 1));
+  
+  let calendarHtml = '<div style="display: flex; flex-direction: column; gap: 20px; padding: 16px;">';
+  
+  // Leyenda de proyectos con código y colores
+  calendarHtml += `<div style="background: var(--panel); padding: 12px 16px; border: 1px solid var(--grid); border-radius: 6px;">
+    <div style="font-weight: 600; color: var(--ink-dim); margin-bottom: 8px; font-size: 12px;">Leyenda de Proyectos (${activities.length} entregables):</div>
+    <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+      ${Object.entries(uniqueProjects).sort((a, b) => a[1].localeCompare(b[1])).map(([projName, projCod]) => {
+        const color = projectColorMap[projName].color;
+        return `<div style="display: flex; align-items: center; gap: 6px;">
+          <div style="width: 12px; height: 12px; background: ${color}; border: 1px solid var(--grid); border-radius: 2px;"></div>
+          <span style="font-size: 11px; color: var(--ink-dim);">📦 ${projCod}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+  
+  let currentDate = new Date(startDate);
+  while(currentDate.getTime() <= maxTime){
+    const weekStart = new Date(currentDate);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    
+    const weekLabel = `${fmtDate(weekStart.toISOString())} — ${fmtDate(weekEnd.toISOString())}`;
+    
+    calendarHtml += `<div style="border: 1px solid var(--grid); border-radius: 8px; overflow: hidden;">
+      <div style="background: var(--panel-2); padding: 12px 16px; font-weight: 600; color: var(--ink-dim);">
+        📅 Semana del ${weekLabel}
+      </div>
+      <div style="overflow-x: auto; overflow-y: hidden; border-top: 1px solid var(--grid);">
+        <div style="display: grid; grid-template-columns: repeat(7, minmax(100px, 1fr)); gap: 1px; background: var(--grid); padding: 1px; min-width: 750px;">`;
+    
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    
+    dayNames.forEach((dayName, dayIdx) => {
+      const dayDate = new Date(weekStart);
+      dayDate.setDate(dayDate.getDate() + dayIdx);
+      
+      const dayDeliverables = activities.filter(a => {
+        try {
+          const aEnd = new Date(a.fin);
+          return aEnd.toDateString() === dayDate.toDateString();
+        } catch(e) {
+          return false;
+        }
+      });
+      
+      const dayNum = dayDate.getDate();
+      const monthIdx = dayDate.getMonth();
+      const monthName = meses[monthIdx];
+      const bgColor = dayDeliverables.length > 0 ? 'var(--panel)' : 'white';
+      
+      calendarHtml += `<div style="background: ${bgColor}; padding: 8px; min-height: 120px; border: 1px solid var(--grid);">
+        <div style="font-weight: 600; font-size: 11px; color: var(--ink); margin-bottom: 4px; white-space: nowrap;">
+          ${dayName} ${dayNum} ${monthName}
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">`;
+      
+      dayDeliverables.forEach(d => {
+        const color = projectColorMap[d.projectName].color;
+        calendarHtml += `<div style="background: ${color}; padding: 2px 4px; border-radius: 2px; font-size: 9px; color: white; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${d.actividad}">${d.actividad}</div>`;
+      });
+      
+      calendarHtml += `</div></div>`;
+    });
+    
+    calendarHtml += `</div></div></div>`;
+    currentDate.setDate(currentDate.getDate() + 7);
+  }
+  
+  calendarHtml += '</div>';
+  return calendarHtml;
+}
+
+
+
+
+
+
+
+
+
+
+function buildEntregablesDashboard(projects, projectFilter = ''){
+  // Recolectar entregables
+  const deliverables = [];
+  const allProjects = projects.length > 0 ? projects : [];
+  const projectColorMap = {};
+  const projectStats = {};
+  
+  // Mapear colores por Nivel
+  const colorPalette = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B', '#76D7C4'];
+  const nivelColorMap = {};
+  let colorIndex = 0;
+  
+  allProjects.forEach(proj => {
+    if(proj.ganttRows){
+      proj.ganttRows.forEach(r => {
+        if(r.tipo && r.tipo.toLowerCase().includes('entregable')) {
+          const nivel = r.nivel || 'Sin Nivel';
+          if(!nivelColorMap[nivel]){
+            nivelColorMap[nivel] = colorPalette[colorIndex % colorPalette.length];
+            colorIndex++;
+          }
+          deliverables.push({...r, projectName: proj.name, nivelName: nivel, cod: r.cod || proj.name});
+        }
+      });
+    }
+  });
+
+  if(!deliverables.length){
+    return `<div style="padding: 20px; text-align: center; color: var(--ink-faint);">No hay entregables para mostrar.</div>`;
+  }
+
+  // Estadísticas por semana y proyecto
+  const weekStats = {};
+  const weekProjectStats = {};
+  const allWeeks = [];
+  
+  deliverables.forEach(d => {
+    // Por semana (según fecha FIN - cuando debe emitirse, iniciando en lunes)
+    const semanaFin = new Date(d.fin);
+    const dayFin = semanaFin.getDay();
+    semanaFin.setDate(semanaFin.getDate() - (dayFin === 0 ? 6 : dayFin - 1));
+    const weekKey = fmtDateShort(semanaFin);
+    
+    if(!weekStats[weekKey]){
+      weekStats[weekKey] = { total: 0, completado: 0, date: semanaFin };
+      allWeeks.push({ key: weekKey, date: new Date(semanaFin) });
+    }
+    weekStats[weekKey].total += 1;
+    // Considerar completado si "Pendiente por" es "Cerrado"
+    if(d.pendientePor && d.pendientePor.toLowerCase() === 'cerrado') weekStats[weekKey].completado += 1;
+    
+    // Por semana y nivel (según fecha FIN)
+    const key = `${weekKey}_${d.nivelName}`;
+    if(!weekProjectStats[key]){
+      weekProjectStats[key] = { total: 0, completado: 0, week: weekKey, nivel: d.nivelName };
+    }
+    weekProjectStats[key].total += 1;
+    if(d.pendientePor && d.pendientePor.toLowerCase() === 'cerrado') weekProjectStats[key].completado += 1;
+  });
+
+  let html = '<div style="display: flex; flex-direction: column; gap: 24px; padding: 16px;">';
+  
+  // GRÁFICO 1: Matriz Semanas x Proyectos
+  html += `<div style="border: 1px solid var(--grid); border-radius: 8px; overflow: hidden;">
+    <div style="background: var(--panel-2); padding: 12px 16px; font-weight: 600; color: var(--ink);">
+      📊 Entregables por Semana y Proyecto
+    </div>
+    <div style="padding: 16px; overflow-x: auto;">`;
+  
+  const sortedWeeks = allWeeks.sort((a, b) => a.date - b.date).map(w => w.key);
+  const projectsWithData = new Set();
+  deliverables.forEach(d => projectsWithData.add(d.nivelName));
+  const sortedProjects = Array.from(projectsWithData).sort();
+  
+  // Tabla de calor
+  html += `<table style="border-collapse: collapse; width: 100%; font-size: 13px; border-top: 2px solid #da2a2b;">
+    <thead>
+      <tr style="background: #da2a2b; border-bottom: 2px solid #da2a2b;">
+        <th style="padding: 10px 6px; text-align: center; font-weight: 600; color: white; border: none; font-size: 13px; width: 60px; background: rgba(0,0,0,0.1);">📊 Total</th>
+        <th style="padding: 10px 4px; text-align: center; font-weight: 600; color: white; border: none; font-size: 13px; width: 50px; background: rgba(46,125,70,0.15);">✓ Atend.</th>
+        <th style="padding: 10px 4px; text-align: center; font-weight: 600; color: white; border: none; font-size: 13px; width: 50px; background: rgba(192,0,0,0.15);">⏳ Pend.</th>`;
+  
+  sortedWeeks.forEach(week => {
+    html += `<th style="padding: 10px 8px; text-align: center; font-weight: 600; color: white; border: none; font-size: 13px; white-space: nowrap;">${week}</th>`;
+  });
+  
+  html += `</tr></thead><tbody>`;
+  
+  let projIndex = 0;
+  sortedProjects.forEach(nivel => {
+    const nivelName = nivel;
+    const nivelColor = nivelColorMap[nivel];
+    let totalEntregablesNivel = 0;
+    let atendidosNivel = 0;
+    sortedWeeks.forEach(week => {
+      const key = `${week}_${nivel}`;
+      const stat = weekProjectStats[key];
+      if(stat) {
+        totalEntregablesNivel += stat.total;
+        atendidosNivel += stat.completado;
+      }
+    });
+    const pendientesNivel = totalEntregablesNivel - atendidosNivel;
+    const bgColor = projIndex % 2 === 0 ? 'white' : '#FAFAF8';
+    projIndex++;
+    
+    html += `<tr style="border-bottom: 1px solid var(--grid); background: ${bgColor};">
+      <td style="padding: 12px 6px; text-align: center; color: var(--ink); font-weight: 600; border: none; background: rgba(128,128,128,0.08);">${totalEntregablesNivel}</td>
+      <td style="padding: 12px 4px; text-align: center; color: #2E7D46; font-weight: 600; border: none; background: rgba(46,125,70,0.08);" title="Entregables atendidos (Pendiente por = Cerrado)">${atendidosNivel}</td>
+      <td style="padding: 12px 4px; text-align: center; color: #C00000; font-weight: 600; border: none; background: rgba(192,0,0,0.08);" title="Entregables pendientes de atender">${pendientesNivel}</td>`;
+    
+    sortedWeeks.forEach(week => {
+      const key = `${week}_${nivel}`;
+      const stat = weekProjectStats[key];
+      let cellHtml = '';
+      
+      if(stat){
+        const porcentaje = Math.round((stat.completado / stat.total) * 100);
+        const textColor = porcentaje >= 75 ? '#2E7D46' : porcentaje >= 50 ? '#D9A441' : '#C00000';
+        
+        cellHtml = `<td style="padding: 12px 8px; text-align: center; color: ${textColor}; font-weight: 600; border: none; background: ${bgColor};" title="Completados/Total: ${stat.completado}/${stat.total} (${porcentaje}%)">
+          ${stat.total > 0 ? `${stat.completado}/${stat.total}` : '-'}
+        </td>`;
+      } else {
+        cellHtml = `<td style="padding: 12px 8px; text-align: center; color: var(--ink-faint); border: none; background: ${bgColor};">-</td>`;
+      }
+      
+      html += cellHtml;
+    });
+    
+    html += '</tr>';
+  });
+  
+
+  
+  html += `</tbody></table></div></div>`;
+  
+  // GRÁFICO 2: Entregables por Proyecto (barras horizontales)
+  html += `<div style="border: 1px solid var(--grid); border-radius: 8px; overflow: hidden;">
+    <div style="background: var(--panel-2); padding: 12px 16px; font-weight: 600; color: var(--ink);">
+      📦 Entregables por Nivel
+    </div>
+    <div style="padding: 16px;">`;
+  
+  const nivelProgressStats = {};
+  deliverables.forEach(d => {
+    if(!nivelProgressStats[d.nivelName]){
+      nivelProgressStats[d.nivelName] = { total: 0, completado: 0 };
+    }
+    nivelProgressStats[d.nivelName].total += 1;
+    if(d.pendientePor && d.pendientePor.toLowerCase() === 'cerrado') nivelProgressStats[d.nivelName].completado += 1;
+  });
+  
+  Object.keys(nivelProgressStats).sort().forEach(key => {
+    const stat = nivelProgressStats[key];
+    const porcentaje = Math.round((stat.completado / stat.total) * 100);
+    const nivelColor = nivelColorMap[key];
+    
+    html += `<div style="margin-bottom: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-size: 12px; font-weight: 500; color: var(--ink);">📦 ${key}</span>
+        <span style="font-size: 12px; color: var(--ink-dim);">${stat.completado}/${stat.total}</span>
+      </div>
+      <div style="background: var(--grid); height: 24px; border-radius: 4px; overflow: hidden; position: relative;">
+        <div style="background: ${nivelColor}; height: 100%; width: ${porcentaje}%; transition: width 0.3s; display: flex; align-items: center; justify-content: flex-end; padding-right: 6px;">
+          <span style="font-size: 11px; font-weight: 600; color: white;">${porcentaje}%</span>
+        </div>
+      </div>
+    </div>`;
+  });
+  
+  html += '</div></div>';
+  
+  // GRÁFICO 3: Resumen General (basado en "Pendiente por")
+  const totalEntregables = deliverables.length;
+  const completados = deliverables.filter(d => d.pendientePor && d.pendientePor.toLowerCase() === 'cerrado').length;
+  const porcentajeGeneral = totalEntregables > 0 ? Math.round((completados / totalEntregables) * 100) : 0;
+  const enProgreso = deliverables.filter(d => d.pendientePor && d.pendientePor.toLowerCase() !== 'cerrado' && d.pendientePor !== '').length;
+  const noIniciado = totalEntregables - completados - enProgreso;
+  
+  html += `<div style="border: 1px solid var(--grid); border-radius: 8px; overflow: hidden;">
+    <div style="background: var(--panel-2); padding: 12px 16px; font-weight: 600; color: var(--ink);">
+      📊 Resumen General de Entregables
+    </div>
+    <div style="padding: 16px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+        <div style="background: var(--panel); padding: 12px; border-radius: 6px; border-left: 4px solid var(--ink-dim);">
+          <div style="font-size: 24px; font-weight: 700; color: var(--ink);">${totalEntregables}</div>
+          <div style="font-size: 11px; color: var(--ink-dim); margin-top: 4px;">Total</div>
+        </div>
+        <div style="background: var(--panel); padding: 12px; border-radius: 6px; border-left: 4px solid #2E7D46;">
+          <div style="font-size: 24px; font-weight: 700; color: #2E7D46;">${completados}</div>
+          <div style="font-size: 11px; color: var(--ink-dim); margin-top: 4px;">Completados</div>
+        </div>
+        <div style="background: var(--panel); padding: 12px; border-radius: 6px; border-left: 4px solid #D9A441;">
+          <div style="font-size: 24px; font-weight: 700; color: #D9A441;">${enProgreso}</div>
+          <div style="font-size: 11px; color: var(--ink-dim); margin-top: 4px;">En Progreso</div>
+        </div>
+        <div style="background: var(--panel); padding: 12px; border-radius: 6px; border-left: 4px solid #C00000;">
+          <div style="font-size: 24px; font-weight: 700; color: #C00000;">${noIniciado}</div>
+          <div style="font-size: 11px; color: var(--ink-dim); margin-top: 4px;">No Iniciado</div>
+        </div>
+      </div>
+      <div style="margin-top: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 12px; font-weight: 500; color: var(--ink);">Avance General</span>
+          <span style="font-size: 12px; font-weight: 600; color: var(--ink);">${porcentajeGeneral}%</span>
+        </div>
+        <div style="background: var(--grid); height: 28px; border-radius: 4px; overflow: hidden;">
+          <div style="background: linear-gradient(90deg, #2E7D46 0%, #D9A441 50%, #C00000 100%); height: 100%; width: ${porcentajeGeneral}%; transition: width 0.3s; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px;">
+            <span style="font-size: 12px; font-weight: 700; color: white;">${porcentajeGeneral}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  
+  // GRÁFICO 4: Entregables Pendientes por...
+  const pendientePorStats = {};
+  deliverables.forEach(d => {
+    if(d.pendientePor && d.pendientePor !== ''){
+      if(!pendientePorStats[d.pendientePor]){
+        pendientePorStats[d.pendientePor] = 0;
+      }
+      pendientePorStats[d.pendientePor] += 1;
+    }
+  });
+  
+  if(Object.keys(pendientePorStats).length > 0){
+    html += `<div style="border: 1px solid var(--grid); border-radius: 8px; overflow: hidden;">
+      <div style="background: var(--panel-2); padding: 12px 16px; font-weight: 600; color: var(--ink);">
+        ⏳ Entregables Pendientes por...
+      </div>
+      <div style="padding: 16px;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tbody>`;
+    
+    Object.entries(pendientePorStats).sort((a,b) => b[1] - a[1]).forEach(([key, count]) => {
+      const maxCount = Math.max(...Object.values(pendientePorStats));
+      const percentage = (count / maxCount) * 100;
+      html += `<tr style="border-bottom: 1px solid var(--grid);">
+        <td style="padding: 12px; font-weight: 500; color: var(--ink); width: 200px;">${key}</td>
+        <td style="padding: 12px;">
+          <div style="background: var(--grid); height: 24px; border-radius: 4px; overflow: hidden;">
+            <div style="background: #D9A441; height: 100%; width: ${percentage}%; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px;">
+              <span style="font-size: 12px; font-weight: 600; color: white;">${count}</span>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    });
+    
+    html += `</tbody></table></div></div>`;
+  }
+  
+  html += '</div>';
+  return html;
+}
+
+
+
+
+
+
+
+
+
+
+function renderEntregables(){
+  const empty = document.getElementById('entregablesEmpty');
+  const content = document.getElementById('entregablesContent');
+  const hasProjects = PROJECTS && PROJECTS.length > 0;
+  
+  if(empty) empty.style.display = hasProjects ? 'none' : 'block';
+  if(content) content.style.display = hasProjects ? 'block' : 'none';
+  if(!hasProjects) {
+    console.log('No projects in renderEntregables. PROJECTS:', PROJECTS);
+    return;
+  }
+  
+  // Renderizar directamente los entregables sin filtros
+  try {
+    if(document.getElementById('entregablesCalendarBody')) {
+      document.getElementById('entregablesCalendarBody').innerHTML = buildEntregablesCalendarWeekly(PROJECTS, '');
+    }
+    if(document.getElementById('entregablesCalendarByPersonBody')) {
+      document.getElementById('entregablesCalendarByPersonBody').innerHTML = buildEntregablesDashboard(PROJECTS, '');
+    }
+  } catch(e) {
+    console.log('Error renderizando entregables:', e);
+  }
+}
+
+
+function renderResponsables(){
+  const empty = document.getElementById('responsablesEmpty');
+  const content = document.getElementById('responsablesContent');
+  const hasProjects = PROJECTS && PROJECTS.length > 0;
+  
+  if(empty) empty.style.display = hasProjects ? 'none' : 'block';
+  if(content) content.style.display = hasProjects ? 'block' : 'none';
+  if(!hasProjects) {
+    console.log('No projects in renderResponsables. PROJECTS:', PROJECTS);
+    return;
+  }
+
+  // Renderizar responsables directamente sin filtros
+  try {
+    if(document.getElementById('respGanttBody')) {
+      document.getElementById('respGanttBody').innerHTML = buildResponsableGanttChart(PROJECTS, '');
+    }
+    if(document.getElementById('respCalendarBody')) {
+      document.getElementById('respCalendarBody').innerHTML = buildResponsableCalendar(PROJECTS, '');
+    }
+    if(document.getElementById('respCalendarByPersonBody')) {
+      document.getElementById('respCalendarByPersonBody').innerHTML = buildCalendarByResponsable(PROJECTS, '');
+    }
+    if(document.getElementById('navRespCount')) {
+      document.getElementById('navRespCount').textContent = PROJECTS.length;
+    }
+  } catch(e) {
+    console.log('Error renderizando responsables:', e);
+  }
+}
+
+/* ================= Entregables ================= */
+
+
+
+
+
+
+
+
+
+
+
+/* ================= Top-level render ================= */
+
+function safeRender(){
+  try {
+    render();
+  } catch(err) {
+    console.error('Error en render:', err);
+  }
+}
+
+
+function render(){
+  document.getElementById('navProjCount').textContent = PROJECTS.length;
+  document.getElementById('navFileCount').textContent = PROJECTS.length;
+
+  const filebar = document.getElementById('filebar');
+  filebar.innerHTML = PROJECTS.map(p => `<span class="chip">${p.file}</span>`).join('');
+
+  const hasProjects = PROJECTS.length > 0;
+  // foot element removed - no longer needed
+
+  const cutoffBar = document.getElementById('cutoffBar');
+  cutoffBar.classList.toggle('hidden', !hasProjects);
+  if(hasProjects){
+    const {min, max} = overallDateRange();
+    if(min && max){
+      document.getElementById('cutoffRange').textContent = `Rango disponible: ${fmtDate(min.toISOString())} — ${fmtDate(max.toISOString())}`;
+      const input = document.getElementById('cutoffInput');
+      input.min = toISODate(min);
+      input.max = toISODate(max);
+      if(!selectedDate){
+        selectedDate = defaultCutoffDate() || max;
+        input.value = toISODate(selectedDate);
+      }
+    }
+  }
+
+  if(selectedProjectIdx === null && PROJECTS.length) selectedProjectIdx = 0;
+  if(!PROJECTS.length) selectedProjectIdx = null;
+
+  renderTracking();
+  renderResponsables();
+  renderEntregables();
+  renderProrrateo();
+  updateHeader();
+}
+
+// Envolver render para reinicializar column resizing
+const originalRender = render;
+render = function(){
+  originalRender.call(this);
+  setTimeout(() => initColumnResizing(), 50);
+};
+
+document.getElementById('cutoffInput').addEventListener('change', e => {
+  selectedDate = parseISODateOnly(e.target.value);
+  setupTabButtons();
+  render();
+});
+
+
+/* ================= File handling ================= */
+
+function showError(msg){
+  const box = document.getElementById('errors');
+  const div = document.createElement('div');
+  div.className = 'err';
+  div.textContent = msg;
+  box.appendChild(div);
+  setTimeout(()=> div.remove(), 8000);
+}
+
+function handleFiles(fileList){
+  if(fileList.length === 0) return;
+  
+  // Solo procesar el primer archivo
+  const file = fileList[0];
+  
+  if(!file.name.toLowerCase().endsWith('.xlsx')){
+    showError(`"${file.name}" no es un archivo .xlsx.`);
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type:'array', cellDates:true});
+      const proj = extractProject(workbook, file.name);
+      
+      // Reemplazar cualquier proyecto anterior
+      PROJECTS.length = 0;
+      PROJECTS.push(proj);
+      selectedProjectIdx = 0;
+      
+      // ⭐ ARREGLO: Inicializar selectedDate con hasta_el (fecha de corte del proyecto)
+      if(proj.hasta_el){
+        selectedDate = new Date(proj.hasta_el);
+        console.log('✓ selectedDate inicializado con hasta_el:', fmtDate(proj.hasta_el));
+      }
+      
+      // Mostrar mensaje de éxito
+      const errDiv = document.getElementById('errors');
+      if(errDiv){
+        errDiv.innerHTML = '';
+        const successMsg = document.createElement('div');
+        successMsg.textContent = '✓ Cargado correctamente: ' + file.name;
+        successMsg.style.cssText = 'background:#D5F4E6;color:#1B3A50;border:1.5px solid #5EBFA8;border-radius:6px;padding:12px 14px;margin-top:14px;font-size:13px;font-weight:600;';
+        errDiv.appendChild(successMsg);
+        setTimeout(() => { if(successMsg.parentNode) successMsg.remove(); }, 3000);
+      }
+      
+      // Inicializar render para preparar los datos
+      // Pero mantener la página en 'import'
+      try {
+        const savedPage = currentPage;
+        render();
+        currentPage = 'import'; // Restaurar a import
+        document.querySelectorAll('.page-section').forEach(el=>{
+          el.classList.toggle('active', el.id === 'page-import');
+        });
+        document.querySelectorAll('.nav-item').forEach(el=>{
+          el.classList.toggle('active', el.dataset.page === 'import');
+        });
+      } catch(e) {
+        console.log('Error initializing:', e);
+      }
+    }catch(err){
+      showError(err.message || `No se pudo procesar "${file.name}".`);
+    }
+  };
+  reader.onerror = () => showError(`Error leyendo "${file.name}".`);
+  reader.readAsArrayBuffer(file);
+}
+
+const fileInput = document.getElementById('fileInput');
+const dropzone = document.getElementById('dropzone');
+
+document.getElementById('pickBtn').addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => { handleFiles(e.target.files); fileInput.value = ''; });
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  PROJECTS.length = 0;
+  selectedDate = null;
+  selectedProjectIdx = null;
+  setupTabButtons();
+  render();
+});
+
+['dragenter','dragover'].forEach(evt=>{
+  dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); });
+});
+['dragleave','drop'].forEach(evt=>{
+  dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); });
+});
+dropzone.addEventListener('drop', e => {
+  if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+});
+
+// Agregar listeners globales para el resize
+document.addEventListener('mousemove', handleMouseMove);
+document.addEventListener('mouseup', handleMouseUp);
+
+/* ================= PRORRATEO DASHBOARD ================= */
+let prorrateoAllActivities = [];
+let prorrateoFilesLoaded = 0;
+let prorrateoFilesImported = [];
+let prorrateoCurrentCodFilter = new Set();
+let prorrateoCharts = {};
+let prorrateoSortState = {};
+
+const prorrateoDropzone = document.getElementById('prorrateoDropzone');
+const prorrateoFileInput = document.getElementById('prorrateoFileInput');
+const prorrateoMessages = document.getElementById('prorrateoMessages');
+const prorrateoFilesLoadedDiv = document.getElementById('prorrateoFilesLoaded');
+const prorrateoContent_Table = document.getElementById('prorrateoContent_Table');
+const prorrateoContentDias = document.getElementById('prorrateoContentDias');
+const prorrateoContentResp = document.getElementById('prorrateoContentResp');
+
+if(prorrateoDropzone) {
+  prorrateoDropzone.addEventListener('click', () => prorrateoFileInput.click());
+  prorrateoDropzone.addEventListener('dragover', e => { e.preventDefault(); prorrateoDropzone.style.background = '#e3f2fd'; });
+  prorrateoDropzone.addEventListener('dragleave', () => { prorrateoDropzone.style.background = '#fafafa'; });
+  prorrateoDropzone.addEventListener('drop', e => { e.preventDefault(); prorrateoDropzone.style.background = '#fafafa'; prorrateoHandleFiles(e.dataTransfer.files); });
+}
+if(prorrateoFileInput) {
+  prorrateoFileInput.addEventListener('change', e => prorrateoHandleFiles(e.target.files));
+}
+
+function switchProrrateoTab(tabName) {
+  // Ocultar todos los tabs
+  document.querySelectorAll('#prorrateoContent .tab-content').forEach(el => el.style.display = 'none');
+  // Desactivar todos los botones
+  document.querySelectorAll('#prorrateoContent .tab-btn').forEach(el => el.classList.remove('active'));
+  // Mostrar tab seleccionado
+  const tab = document.getElementById(tabName);
+  if(tab) {
+    tab.style.display = 'block';
+    // Darle tiempo para que se pinte antes de hacerlo visible
+    setTimeout(() => tab.style.visibility = 'visible', 10);
+  }
+  // Activar botón
+  if(event && event.target) {
+    event.target.classList.add('active');
+  }
+}
+
+function prorrateoShowMessage(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  div.className = text.includes('Cargados') ? 'info' : (text.includes('Error') ? 'error' : 'info');
+  prorrateoMessages.innerHTML = '';
+  prorrateoMessages.appendChild(div);
+}
+
+function prorrateoFormatDate(date) {
+  if(!date) return '';
+  if(typeof date === 'number' && date > 0) {
+    try {
+      const d = new Date((date - 25569) * 86400 * 1000);
+      const day = String(d.getDate()).padStart(2, '0');
+      const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      return day + '/' + months[d.getMonth()];
+    } catch(e) { return ''; }
+  }
+  if(typeof date === 'string') {
+    try {
+      const d = new Date(date);
+      const day = String(d.getDate()).padStart(2, '0');
+      const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      return day + '/' + months[d.getMonth()];
+    } catch(e) { return ''; }
+  }
+  return '';
+}
+
+function prorrateoGetDateString(date) {
+  if(!date) return null;
+  if(typeof date === 'number' && date > 0) {
+    try {
+      const d = new Date((date - 25569) * 86400 * 1000);
+      if(isNaN(d.getTime())) return null;
+      return d.toISOString().split('T')[0];
+    } catch(e) { return null; }
+  }
+  if(typeof date === 'string') {
+    try {
+      const d = new Date(date);
+      if(isNaN(d.getTime())) return null;
+      return d.toISOString().split('T')[0];
+    } catch(e) { return null; }
+  }
+  return null;
+}
+
+function prorrateoGetNivelColor(nivel) {
+  if(!nivel) return '#ffffff';
+  const nivelStr = String(nivel).toLowerCase();
+  if(nivelStr.includes('etapa 1') || nivelStr === '1') return '#ffb366';
+  if(nivelStr.includes('etapa 2') || nivelStr === '2') return '#66b3ff';
+  if(nivelStr.includes('etapa 3') || nivelStr === '3') return '#cc99ff';
+  if(nivelStr.includes('etapa 4') || nivelStr === '4') return '#99ff99';
+  return '#ffffff';
+}
+
+function prorrateoMakeTableSortable(tableElement, tableType) {
+  if(!tableElement || !tableElement.querySelector('thead')) return;
+  const headers = tableElement.querySelectorAll('th');
+  headers.forEach((header, idx) => {
+    header.style.cursor = 'pointer';
+    header.addEventListener('click', () => {
+      const col = header.textContent.trim().replace(' asc', '').replace(' desc', '');
+      if(!prorrateoSortState[tableType]) prorrateoSortState[tableType] = {};
+      if(prorrateoSortState[tableType].col === col) {
+        prorrateoSortState[tableType].asc = !prorrateoSortState[tableType].asc;
+      } else {
+        prorrateoSortState[tableType].col = col;
+        prorrateoSortState[tableType].asc = true;
+      }
+      const rows = Array.from(tableElement.querySelectorAll('tbody tr'));
+      rows.sort((a, b) => {
+        const aVal = a.children[idx] ? a.children[idx].textContent.trim() : '';
+        const bVal = b.children[idx] ? b.children[idx].textContent.trim() : '';
+        const aNum = parseFloat(aVal.replace('%', ''));
+        const bNum = parseFloat(bVal.replace('%', ''));
+        const isNum = !isNaN(aNum) && !isNaN(bNum);
+        const cmp = isNum ? aNum - bNum : aVal.localeCompare(bVal);
+        return prorrateoSortState[tableType].asc ? cmp : -cmp;
+      });
+      const tbody = tableElement.querySelector('tbody');
+      rows.forEach(row => tbody.appendChild(row));
+      headers.forEach(h => { h.textContent = h.textContent.replace(' asc', '').replace(' desc', ''); });
+      header.textContent = col + (prorrateoSortState[tableType].asc ? ' asc' : ' desc');
+    });
+  });
+}
+
+function prorrateoHandleFiles(files) {
+  if(!files.length) return;
+  prorrateoFilesLoaded = 0;
+  prorrateoFilesImported = [];
+  Array.from(files).forEach((file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const wsGantt = workbook.Sheets['Gantt'];
+        if(!wsGantt) { prorrateoFilesLoaded++; prorrateoFinishLoading(files.length); return; }
+        prorrateoFilesImported.push(file.name);
+        for(let r = 9; r <= 300; r++) {
+          const cod = wsGantt['B' + r]?.v;
+          if(!cod) break;
+          const activity = {
+            cod: cod,
+            nivel: wsGantt['C' + r]?.v,
+            wbs: wsGantt['D' + r]?.v,
+            actividad: wsGantt['E' + r]?.v || '',
+            tipo: wsGantt['F' + r]?.v,
+            inicio: wsGantt['G' + r]?.v,
+            fin: wsGantt['H' + r]?.v,
+            responsable: wsGantt['J' + r]?.v,
+            hhTotal: wsGantt['L' + r]?.v || 0,
+            estado: wsGantt['N' + r]?.v,
+            pctOri: wsGantt['P' + r]?.v,
+            pctReal: wsGantt['Q' + r]?.v,
+            pctDif: wsGantt['R' + r]?.v
+          };
+          if(activity.actividad) prorrateoAllActivities.push(activity);
+        }
+        prorrateoFilesLoaded++;
+        prorrateoFinishLoading(files.length);
+      } catch(err) {
+        prorrateoShowMessage('Error: ' + err.message);
+        prorrateoFilesLoaded++;
+        prorrateoFinishLoading(files.length);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function prorrateoFinishLoading(totalFiles) {
+  if(prorrateoFilesLoaded !== totalFiles) return;
+  if(!prorrateoAllActivities.length) { prorrateoShowMessage('No se encontraron actividades'); return; }
+  
+  prorrateoFilesLoadedDiv.innerHTML = '<div class="files-list"><h3>Archivos importados:</h3><ul>' + prorrateoFilesImported.map(f => '<li>' + f + '</li>').join('') + '</ul></div>';
+  prorrateoFilesLoadedDiv.style.display = 'block';
+  
+  const responsables = [...new Set(prorrateoAllActivities.map(a => a.responsable).filter(r => r && r !== '-'))].sort();
+  ['prorrateoResponsableFilterDashboard', 'prorrateoResponsableFilterDetalle', 'prorrateoResponsableFilter', 'prorrateoResponsableFilterResp'].forEach(id => {
+    const select = document.getElementById(id);
+    select.innerHTML = '<option value="">Todos</option>';
+    responsables.forEach(resp => {
+      const opt = document.createElement('option');
+      opt.value = resp;
+      opt.textContent = resp;
+      select.appendChild(opt);
+    });
+  });
+  
+  const cods = [...new Set(prorrateoAllActivities.map(a => a.cod).filter(c => c && c !== '-'))].sort();
+  ['prorrateoCodeFilterContainerDashboard', 'prorrateoCodeFilterContainerDetalle', 'prorrateoCodeFilterContainer', 'prorrateoCodeFilterContainerResp'].forEach(id => {
+    const container = document.getElementById(id);
+    container.innerHTML = '';
+    cods.forEach(cod => {
+      const btn = document.createElement('button');
+      btn.className = 'cod-btn';
+      btn.textContent = cod;
+      btn.onclick = () => {
+        if(prorrateoCurrentCodFilter.has(cod)) { prorrateoCurrentCodFilter.delete(cod); btn.classList.remove('active'); }
+        else { prorrateoCurrentCodFilter.add(cod); btn.classList.add('active'); }
+        prorrateoApplyFiltersDetalle();
+        prorrateoApplyFilters();
+        prorrateoApplyFiltersResp();
+        prorrateoRenderCharts();
+      };
+      container.appendChild(btn);
+    });
+  });
+  
+  document.getElementById('prorrateoFiltersDashboard').style.display = 'block';
+  document.getElementById('prorrateoFiltersDetalle').style.display = 'block';
+  document.getElementById('prorrateoFiltersSection').style.display = 'block';
+  document.getElementById('prorrateoFiltersSectionResp').style.display = 'block';
+  document.getElementById('prorrateoChartsContainer').style.display = 'block';
+  document.getElementById('prorrateoContent').style.display = 'block';
+  
+  prorrateoRenderTable(prorrateoAllActivities);
+  prorrateoApplyFilters();
+  prorrateoRenderCharts();
+  prorrateoShowMessage('Cargados: ' + prorrateoAllActivities.length + ' actividades de ' + prorrateoFilesImported.length + ' archivo(s)');
+}
+
+function prorrateoDesfiltrar(tab) {
+  prorrateoCurrentCodFilter.clear();
+  document.querySelectorAll('#prorrateoContent .cod-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('prorrateoResponsableFilterDashboard').value = '';
+  document.getElementById('prorrateoResponsableFilterDetalle').value = '';
+  document.getElementById('prorrateoResponsableFilter').value = '';
+  document.getElementById('prorrateoResponsableFilterResp').value = '';
+  if(tab === 'detalle') prorrateoApplyFiltersDetalle();
+  else if(tab === 'hhdia') prorrateoApplyFilters();
+  else if(tab === 'hhresp') prorrateoApplyFiltersResp();
+  else if(tab === 'dashboard') prorrateoRenderCharts();
+}
+
+function prorrateoApplyFiltersDetalle() {
+  const resp = document.getElementById('prorrateoResponsableFilterDetalle').value;
+  let filtered = prorrateoAllActivities;
+  if(resp) filtered = filtered.filter(a => a.responsable === resp);
+  if(prorrateoCurrentCodFilter.size > 0) filtered = filtered.filter(a => prorrateoCurrentCodFilter.has(a.cod));
+  prorrateoRenderTable(filtered);
+}
+
+function prorrateoApplyFilters() {
+  const resp = document.getElementById('prorrateoResponsableFilter').value;
+  let datos = [];
+  let dates = new Set();
+  prorrateoAllActivities.forEach(a => {
+    if(!a.responsable || !a.inicio || a.hhTotal <= 0) return;
+    if(resp && a.responsable !== resp) return;
+    if(prorrateoCurrentCodFilter.size > 0 && !prorrateoCurrentCodFilter.has(a.cod)) return;
+    const dateStr = prorrateoGetDateString(a.inicio);
+    if(!dateStr) return;
+    dates.add(dateStr);
+    const key = a.cod + '|' + a.responsable;
+    let row = datos.find(d => d.key === key);
+    if(!row) { row = { key: key, cod: a.cod, responsable: a.responsable, horas: {} }; datos.push(row); }
+    row.horas[dateStr] = (row.horas[dateStr] || 0) + a.hhTotal;
+  });
+  if(!datos.length) { prorrateoContentDias.innerHTML = '<div style="padding:20px; color:#999;">Sin datos</div>'; return; }
+  const sortedDates = Array.from(dates).sort();
+  let html = '<table><thead><tr><th class="sticky-col" style="left:0;">Codigo</th><th class="sticky-col" style="left:100px;">Responsable</th>';
+  sortedDates.forEach(d => {
+    const fecha = new Date(d);
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    const mes = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][fecha.getMonth()];
+    html += '<th class="text-center">' + dia + '/' + mes + '</th>';
+  });
+  html += '<th class="text-center">Total</th></tr></thead><tbody>';
+  datos.sort((a, b) => a.cod.localeCompare(b.cod) || a.responsable.localeCompare(b.responsable));
+  const totales = {};
+  sortedDates.forEach(d => totales[d] = 0);
+  datos.forEach(row => {
+    let rowTotal = 0;
+    html += '<tr><td class="sticky-col" style="left:0;">' + row.cod + '</td><td class="sticky-col" style="left:100px;">' + row.responsable + '</td>';
+    sortedDates.forEach(d => {
+      const hh = row.horas[d] || 0;
+      rowTotal += hh;
+      totales[d] += hh;
+      html += '<td class="text-center">' + (hh > 0 ? Math.round(hh) : '-') + '</td>';
+    });
+    html += '<td class="text-center">' + Math.round(rowTotal) + '</td></tr>';
+  });
+  let totalGral = 0;
+  html += '<tr class="total-row"><td class="sticky-col" style="left:0;">TOTAL</td><td class="sticky-col" style="left:100px;"></td>';
+  sortedDates.forEach(d => {
+    const tot = totales[d];
+    totalGral += tot;
+    html += '<td class="text-center">' + Math.round(tot) + '</td>';
+  });
+  html += '<td class="text-center">' + Math.round(totalGral) + '</td></tr></tbody></table>';
+  prorrateoContentDias.innerHTML = html;
+  prorrateoMakeTableSortable(prorrateoContentDias.querySelector('table'), 'hhdia');
+}
+
+function prorrateoApplyFiltersResp() {
+  const resp = document.getElementById('prorrateoResponsableFilterResp').value;
+  let datos = {};
+  let allDates = new Set();
+  prorrateoAllActivities.forEach(a => {
+    if(!a.responsable || !a.inicio || a.hhTotal <= 0) return;
+    if(resp && a.responsable !== resp) return;
+    if(prorrateoCurrentCodFilter.size > 0 && !prorrateoCurrentCodFilter.has(a.cod)) return;
+    const dateStr = prorrateoGetDateString(a.inicio);
+    if(!dateStr) return;
+    allDates.add(dateStr);
+    const r = a.responsable;
+    if(!datos[r]) datos[r] = {};
+    if(!datos[r][a.cod]) datos[r][a.cod] = {};
+    datos[r][a.cod][dateStr] = (datos[r][a.cod][dateStr] || 0) + a.hhTotal;
+  });
+  if(!Object.keys(datos).length) { prorrateoContentResp.innerHTML = '<div style="padding:20px; color:#999;">Sin datos</div>'; return; }
+  const sortedDates = Array.from(allDates).sort();
+  let html = '';
+  Object.keys(datos).sort().forEach(r => {
+    html += '<div style="margin-bottom: 30px;"><h4 style="background: #c41e3a; color: white; padding: 10px; border-radius: 4px; margin-bottom: 10px;">Responsable: ' + r + '</h4>';
+    html += '<table><thead><tr><th class="sticky-col" style="left:0;">Codigo</th>';
+    sortedDates.forEach(d => {
+      const fecha = new Date(d);
+      const dia = String(fecha.getDate()).padStart(2, '0');
+      const mes = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][fecha.getMonth()];
+      html += '<th class="text-center">' + dia + '/' + mes + '</th>';
+    });
+    html += '<th class="text-center">Total</th></tr></thead><tbody>';
+    const totales = {};
+    sortedDates.forEach(d => totales[d] = 0);
+    Object.keys(datos[r]).sort().forEach(cod => {
+      let rowTotal = 0;
+      html += '<tr><td class="sticky-col" style="left:0;">' + cod + '</td>';
+      sortedDates.forEach(d => {
+        const hh = datos[r][cod][d] || 0;
+        rowTotal += hh;
+        totales[d] += hh;
+        html += '<td class="text-center">' + (hh > 0 ? Math.round(hh) : '-') + '</td>';
+      });
+      html += '<td class="text-center">' + Math.round(rowTotal) + '</td></tr>';
+    });
+    let totalGral = 0;
+    html += '<tr class="total-row"><td class="sticky-col" style="left:0;">TOTAL</td>';
+    sortedDates.forEach(d => {
+      const tot = totales[d];
+      totalGral += tot;
+      html += '<td class="text-center">' + Math.round(tot) + '</td>';
+    });
+    html += '<td class="text-center">' + Math.round(totalGral) + '</td></tr></tbody></table></div>';
+  });
+  prorrateoContentResp.innerHTML = html;
+  prorrateoContentResp.querySelectorAll('table').forEach((table, idx) => prorrateoMakeTableSortable(table, 'hhresp_' + idx));
+}
+
+function prorrateoRenderTable(activities) {
+  const totalHH = activities.reduce((s, a) => s + (typeof a.hhTotal === 'number' ? a.hhTotal : 0), 0);
+  document.getElementById('prorrateoStats').innerHTML = '<div class="stat-box"><div class="stat-number">' + activities.length + '</div><div class="stat-label">Actividades</div></div><div class="stat-box"><div class="stat-number">' + Math.round(totalHH) + '</div><div class="stat-label">Total HH</div></div><div class="stat-box"><div class="stat-number">' + (activities.length > 0 ? Math.round(totalHH / activities.length) : 0) + '</div><div class="stat-label">Promedio HH/Act</div></div>';
+  document.getElementById('prorrateoStats').style.display = 'grid';
+  let html = '<table><thead><tr><th>Nivel</th><th>WBS</th><th>Actividad</th><th>Tipo</th><th>Inicio</th><th>Fin</th><th class="text-right">HH</th><th>Responsable</th><th>Estado</th><th class="text-center">%Prog</th><th class="text-center">%Real</th><th class="text-center">%Dif</th></tr></thead><tbody>';
+  activities.forEach(a => {
+    const inicio = prorrateoFormatDate(a.inicio);
+    const fin = prorrateoFormatDate(a.fin);
+    const nivelColor = prorrateoGetNivelColor(a.nivel);
+    html += '<tr><td>' + a.cod + '</td><td style="background-color:' + nivelColor + ';">' + (a.nivel || '-') + '</td><td>' + (a.wbs || '-') + '</td><td>' + a.actividad + '</td><td>' + (a.tipo || '-') + '</td><td>' + inicio + '</td><td>' + fin + '</td><td class="text-right">' + (typeof a.hhTotal === 'number' ? Math.round(a.hhTotal) : '-') + '</td><td>' + (a.responsable || '-') + '</td><td>' + (a.estado || '-') + '</td><td class="text-center">' + (typeof a.pctOri === 'number' ? Math.round(a.pctOri * 100) + '%' : (a.pctOri || '-')) + '</td><td class="text-center">' + (typeof a.pctReal === 'number' ? Math.round(a.pctReal * 100) + '%' : (a.pctReal || '-')) + '</td><td class="text-center">' + (typeof a.pctDif === 'number' ? Math.round(a.pctDif * 100) + '%' : (a.pctDif || '-')) + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  prorrateoContent_Table.innerHTML = html;
+  prorrateoMakeTableSortable(prorrateoContent_Table.querySelector('table'), 'detalle');
+}
+
+function prorrateoRenderCharts() {
+  if(!prorrateoAllActivities.length) return;
+  const resp = document.getElementById('prorrateoResponsableFilterDashboard').value;
+  let filtered = prorrateoAllActivities;
+  if(resp) filtered = filtered.filter(a => a.responsable === resp);
+  if(prorrateoCurrentCodFilter.size > 0) filtered = filtered.filter(a => prorrateoCurrentCodFilter.has(a.cod));
+  
+  let hhPorFecha = {}, totales = {}, hhPorCod = {}, fechaMap = {};
+  filtered.forEach(a => {
+    if(!a.inicio || a.hhTotal <= 0) return;
+    const dateStr = prorrateoGetDateString(a.inicio);
+    if(!dateStr) return;
+    const fecha = new Date(dateStr);
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    const mes = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][fecha.getMonth()];
+    const label = dia + '/' + mes;
+    fechaMap[dateStr] = label;
+    if(!hhPorFecha[dateStr]) hhPorFecha[dateStr] = {};
+    if(!hhPorFecha[dateStr][a.responsable]) hhPorFecha[dateStr][a.responsable] = 0;
+    hhPorFecha[dateStr][a.responsable] += a.hhTotal;
+    if(!totales[dateStr]) totales[dateStr] = 0;
+    totales[dateStr] += a.hhTotal;
+    const cod = a.cod || 'Sin Cod';
+    if(!hhPorCod[cod]) hhPorCod[cod] = 0;
+    hhPorCod[cod] += a.hhTotal;
+  });
+  
+  const fechas = Object.keys(hhPorFecha).sort();
+  if(!fechas.length) return;
+  const responsables = [...new Set(filtered.map(a => a.responsable).filter(r => r && r !== '-'))].sort();
+  const labels = fechas.map(f => fechaMap[f]);
+  
+  const ctx1 = document.getElementById('prorrateoChartSemana')?.getContext('2d');
+  if(ctx1) {
+    if(prorrateoCharts['semana']) prorrateoCharts['semana'].destroy();
+    const datasets = responsables.map((r, i) => ({ label: r, data: fechas.map(f => hhPorFecha[f][r] || 0), backgroundColor: 'hsl(' + (i * 360 / (responsables.length || 1)) + ', 70%, 60%)' }));
+    prorrateoCharts['semana'] = new Chart(ctx1, { type: 'bar', data: { labels: labels, datasets: datasets }, options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { legend: { position: 'top' } } } });
+  }
+  
+  const ctx2 = document.getElementById('prorrateoChartAcumulado')?.getContext('2d');
+  if(ctx2) {
+    if(prorrateoCharts['acumulado']) prorrateoCharts['acumulado'].destroy();
+    prorrateoCharts['acumulado'] = new Chart(ctx2, { type: 'line', data: { labels: labels, datasets: [{ label: 'Total HH', data: fechas.map(f => totales[f] || 0), borderColor: '#c41e3a', backgroundColor: 'rgba(196, 30, 58, 0.1)', tension: 0.4, fill: true }] }, options: { responsive: true } });
+  }
+  
+  const ctx3 = document.getElementById('prorrateoChartNivel')?.getContext('2d');
+  if(ctx3) {
+    if(prorrateoCharts['nivel']) prorrateoCharts['nivel'].destroy();
+    prorrateoCharts['nivel'] = new Chart(ctx3, { type: 'doughnut', data: { labels: Object.keys(hhPorCod), datasets: [{ data: Object.values(hhPorCod), backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#C9CBCF'] }] }, options: { responsive: true } });
+  }
+}
+
+render();
+</script>
+</body>
+</html>
