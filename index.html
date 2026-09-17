@@ -54,6 +54,23 @@ function setupTabButtons(){
     --neg:#E74C3C;
     --amber:#F39C12;
     --shadow:0 2px 8px rgba(27,58,80,0.08), 0 12px 24px rgba(27,58,80,0.12);
+
+    /* Paleta "Para PPT" (tomada del diseño del PPT de referencia) */
+    --ppt-navy:#163A5F;
+    --ppt-orange:#F47B20;
+    --ppt-red:#D94A4A;
+    --ppt-teal:#2D7A8C;
+    --ppt-teal-bar:#337E90;
+    --ppt-lightblue:#A9CFE5;
+    --ppt-chart-blue:#4F81BD;
+    --ppt-chart-orange:#F79646;
+    --ppt-gray:#6B7280;
+    --ppt-row-label:#5F798F;
+    --ppt-border:#E5E7EB;
+    --ppt-divider:#D8E0E7;
+    --ppt-pill-red-bg:#FCE8E8;
+    --ppt-pill-teal-bg:#EAF7F8;
+    --ppt-pill-neutral-bg:#F5F7FA;
   }
   *{box-sizing:border-box;}
   body{
@@ -232,6 +249,26 @@ function setupTabButtons(){
     max-width:220px;
   }
   .cutoff-block .range{font-size:10.5px; color:var(--ink-faint); margin-top:8px;}
+
+  /* ============ Línea de tiempo (filtro de fechas del Gantt) ============ */
+  /* Barra deslizante estilo "Insertar escala de tiempo" de Excel: dos
+     manijas arrastrables definen el rango [Desde, Hasta] que filtra las
+     actividades de ambas pestañas del Diagrama de Gantt. */
+  .gantt-timeline-block{margin:20px 16px 0; padding:16px 18px 34px; background:var(--panel); border:1px solid var(--grid); border-radius:8px;}
+  .gantt-timeline-header{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:16px;}
+  .gantt-timeline-title{font-size:12px; font-weight:700; color:var(--ink-dim); font-family:'IBM Plex Mono', monospace;}
+  .gantt-timeline-range-label{font-size:12px; color:var(--plan); font-weight:700; font-family:'IBM Plex Mono', monospace; flex:1; text-align:center;}
+  .gantt-timeline-clear{border:1px solid var(--grid); background:var(--panel-2); border-radius:4px; padding:5px 12px; font-size:11px; color:var(--ink-dim); cursor:pointer; font-family:'IBM Plex Mono', monospace;}
+  .gantt-timeline-clear:hover{color:var(--plan); border-color:var(--plan);}
+  .gantt-timeline-track{position:relative; height:34px; background:var(--panel-2); border:1px solid var(--grid); border-radius:6px; margin:0 8px;}
+  .gantt-timeline-ticks{position:absolute; inset:0; pointer-events:none;}
+  .gantt-timeline-tick{position:absolute; top:0; bottom:0; width:1px; background:var(--grid);}
+  .gantt-timeline-tick-label{position:absolute; bottom:-20px; transform:translateX(-50%); font-size:9px; color:var(--ink-faint); white-space:nowrap; font-family:'IBM Plex Mono', monospace;}
+  .gantt-timeline-selection{position:absolute; top:-1px; bottom:-1px; background:rgba(61,122,139,0.22); border-top:2px solid var(--plan); border-bottom:2px solid var(--plan); cursor:grab;}
+  .gantt-timeline-selection:active{cursor:grabbing;}
+  .gantt-timeline-handle{position:absolute; top:-5px; bottom:-5px; width:14px; margin-left:-7px; background:var(--plan); border-radius:4px; cursor:ew-resize; box-shadow:0 1px 4px rgba(0,0,0,0.3); z-index:2; touch-action:none;}
+  .gantt-timeline-handle:hover, .gantt-timeline-handle.dragging{background:var(--ink);}
+  .gantt-timeline-handle::after{content:''; position:absolute; left:50%; top:50%; width:2px; height:14px; background:#fff; transform:translate(-50%,-50%); border-radius:1px;}
 
   /* ================= Tracking page ================= */
   .proj-select-row{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:24px;}
@@ -508,46 +545,93 @@ function setupTabButtons(){
     .gauge-stats{grid-template-columns:1fr;}
   }
 
-  /* ================= Estilos Prorrateo de HH ================= */
-  #prorrateoContent .filters { display: flex; gap: 30px; margin-bottom: 20px; flex-wrap: wrap; align-items: flex-end; }
-  #prorrateoContent .filter-group { display: flex; flex-direction: column; }
-  #prorrateoContent .filter-group label { font-size: 12px; font-weight: bold; color: var(--ink-dim); margin-bottom: 6px; }
-  #prorrateoContent .filter-group select { padding: 8px 12px; border: 1px solid var(--grid); border-radius: 4px; font-size: 13px; background: white; }
-  #prorrateoContent .cod-filter-section { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
-  #prorrateoContent .cod-filter { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  #prorrateoContent .cod-btn { padding: 6px 12px; border: 1px solid var(--grid); background: var(--panel-2); cursor: pointer; border-radius: 4px; font-size: 11px; transition: all 0.2s; }
-  #prorrateoContent .cod-btn:hover { background: var(--grid-soft); }
-  #prorrateoContent .cod-btn.active { background: #c41e3a; color: white; border-color: #c41e3a; }
-  #prorrateoContent .cod-btn.special { background: #4caf50; color: white; border-color: #4caf50; font-weight: bold; }
-  #prorrateoContent .cod-btn.special:hover { background: #45a049; }
-  #prorrateoContent .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
-  #prorrateoContent .stat-box { background: var(--panel-2); padding: 20px; border-radius: 8px; text-align: center; border-left: 4px solid #c41e3a; }
-  #prorrateoContent .stat-number { font-size: 32px; font-weight: bold; color: #c41e3a; }
-  #prorrateoContent .stat-label { font-size: 12px; color: var(--ink-dim); margin-top: 5px; }
-  #prorrateoContent table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; position: relative; }
-  #prorrateoContent th { background: #c41e3a; color: white; padding: 10px; text-align: left; font-weight: bold; cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 2; }
-  #prorrateoContent th:hover { background: #a01730; }
-  #prorrateoContent td { border: 1px solid var(--grid); padding: 8px; }
-  #prorrateoContent tr:nth-child(even) { background: var(--panel-2); }
-  #prorrateoContent tr.total-row { background: #fff3cd; font-weight: bold; }
-  #prorrateoContent .text-right { text-align: right; }
-  #prorrateoContent .text-center { text-align: center; }
-  #prorrateoContent .sticky-col { position: sticky; background: white; z-index: 1; border-right: 2px solid #c41e3a; }
-  #prorrateoContent th.sticky-col { background: #c41e3a; color: white; }
-  #prorrateoContent .scroll-wrapper { overflow-x: auto; border: 1px solid var(--grid); border-radius: 4px; padding: 15px; background: white; }
-  #prorrateoContent .tab-buttons { display: flex; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--grid); }
-  #prorrateoContent .tab-btn { padding: 10px 15px; border: none; background: transparent; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink-dim); border-bottom: 3px solid transparent; transition: all 0.2s; }
-  #prorrateoContent .tab-btn:hover { color: var(--ink); }
-  #prorrateoContent .tab-btn.active { color: #c41e3a; border-bottom-color: #c41e3a; }
-  #prorrateoContent .tab-content { display: none; }
-  #prorrateoContent .tab-content.active { display: block; }
-  #prorrateoContent .messages { min-height: 40px; margin-bottom: 20px; }
-  #prorrateoContent .info { background: #e8f5e9; color: #2e7d32; padding: 12px; border-radius: 4px; border-left: 4px solid #2e7d32; font-size: 12px; }
-  #prorrateoContent .error { background: #ffebee; color: #c62828; padding: 12px; border-radius: 4px; border-left: 4px solid #c62828; font-size: 12px; }
-  #prorrateoContent .files-list { background: #e8f5e9; border: 1px solid #4caf50; border-radius: 4px; padding: 12px; margin-bottom: 20px; }
-  #prorrateoContent .files-list h3 { color: #2e7d32; font-size: 13px; margin-bottom: 8px; }
-  #prorrateoContent .files-list ul { list-style: none; padding: 0; }
-  #prorrateoContent .files-list li { font-size: 12px; color: #2e7d32; padding: 3px 0; }
+  /* ================= Para PPT (diseño tipo diapositiva) ================= */
+  .ppt-card{
+    background:var(--panel);
+    border:1px solid var(--ppt-border);
+    border-radius:10px;
+    padding:28px 30px 26px;
+    box-shadow:var(--shadow);
+    margin-bottom:22px;
+  }
+  .ppt-title{font-size:19px; font-weight:800; color:var(--ppt-navy); letter-spacing:-0.01em;}
+  .ppt-subtitle{font-size:12.5px; color:var(--ppt-gray); margin:4px 0 22px;}
+  .ppt-accent-line{width:48px; height:3px; background:var(--ppt-teal); border-radius:2px; margin-bottom:18px;}
+  .ppt-empty{text-align:center; color:var(--ink-faint); font-size:13px; padding:40px 10px;}
+
+  /* --- Diagrama de Gantt (slide 1) --- */
+  .ppt-gantt-wrap{position:relative; padding-top:6px;}
+  .ppt-gantt-header{display:flex; margin-bottom:2px;}
+  .ppt-gantt-corner{flex:0 0 26%;}
+  .ppt-gantt-ticks{position:relative; flex:1; height:28px; border-bottom:1px solid var(--ppt-border);}
+  .ppt-gtick{position:absolute; bottom:4px; transform:translateX(-50%); font-size:9.5px; color:var(--ppt-gray); white-space:nowrap; font-family:'IBM Plex Mono', monospace;}
+  .ppt-gantt-rows{display:flex; flex-direction:column;}
+  .ppt-gantt-row{display:flex; align-items:center; min-height:32px; border-bottom:1px solid #F3F4F6;}
+  .ppt-gantt-label{flex:0 0 26%; font-size:12px; color:var(--ppt-row-label); font-weight:500; padding-right:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ppt-gantt-track{position:relative; flex:1; height:32px;}
+  .ppt-gantt-bar{position:absolute; top:8px; height:16px; border-radius:3px; background:var(--ppt-lightblue); overflow:hidden;}
+  .ppt-gantt-bar-done{position:absolute; top:0; left:0; bottom:0; background:var(--ppt-teal-bar); border-radius:3px 0 0 3px;}
+  .ppt-gantt-bar.ppt-bar-mgmt{background:var(--ppt-orange);}
+  .ppt-gantt-bar.ppt-bar-etapa{background:var(--ppt-navy); top:6px; height:20px;}
+  .ppt-gantt-bar.ppt-bar-etapa .ppt-gantt-bar-done{background:var(--ppt-orange);}
+  .ppt-gantt-label.ppt-gantt-label-etapa{font-weight:700; color:var(--ppt-navy);}
+  .ppt-gantt-cutline{position:absolute; top:0; bottom:0; width:0; border-left:2px dashed var(--ppt-red); z-index:3; pointer-events:none;}
+
+  /* --- Gantt "Diseño nuevo" con columnas (WBS/Tipo/Inicio/Fin/% Real) + scroll horizontal --- */
+  .ppt-gantt-topscroll{overflow-x:auto; overflow-y:hidden; height:14px; margin-bottom:6px;}
+  .ppt-gantt-topscroll-inner{height:1px;}
+  .ppt-gantt-scrollarea{overflow-x:auto; overflow-y:hidden; padding-bottom:6px;}
+  /* Caja interna con scroll VERTICAL propio para las filas de "Diseño nuevo"
+     (mismo patrón que .gantt-body en "Diseño clásico"): el encabezado de
+     columnas queda fuera de esta caja, en el flujo normal, así que nunca se
+     pierde de vista al bajar entre las actividades. */
+  .ppt-gantt-rows-scrollbox{max-height:620px; overflow-y:auto; overflow-x:hidden;}
+  .ppt-gantt-cols-row{display:flex; align-items:center; min-height:32px; border-bottom:1px solid #F3F4F6;}
+  .ppt-gantt-cols-header{min-height:auto; padding-bottom:8px; border-bottom:1px solid var(--ppt-border); font-size:10.5px; font-weight:700; color:var(--ppt-gray); text-transform:uppercase; letter-spacing:0.03em;}
+  .ppt-gantt-col{flex:0 0 auto; font-size:12px; color:var(--ppt-row-label); padding-right:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ppt-gantt-col-label{font-weight:500; font-size:12px; white-space:normal; overflow:visible; text-overflow:clip; line-height:1.3; word-break:break-word; padding-top:6px; padding-bottom:6px;}
+  .ppt-gantt-cols-header .ppt-gantt-col{color:var(--ppt-gray); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em;}
+  .ppt-gantt-timeline-header{position:relative; flex:0 0 auto; height:28px; border-bottom:1px solid var(--ppt-border);}
+  .ppt-gantt-timeline-track{position:relative; flex:0 0 auto; height:32px;}
+  .ppt-gantt-cutline span{position:absolute; top:-18px; left:6px; font-size:10.5px; font-weight:700; color:var(--ppt-red); white-space:nowrap;}
+  .ppt-pills{display:flex; gap:12px; flex-wrap:wrap; margin-top:28px;}
+  .ppt-pill{padding:9px 18px; border-radius:20px; font-size:12.5px; font-weight:700; text-align:center;}
+  .ppt-pill-red{background:var(--ppt-pill-red-bg); color:var(--ppt-red);}
+  .ppt-pill-teal{background:var(--ppt-pill-teal-bg); color:var(--ppt-teal);}
+  .ppt-pill-navy{background:var(--ppt-pill-neutral-bg); color:var(--ppt-navy);}
+
+  /* --- Curva S (slide 2) --- */
+  .ppt-curva-layout{display:flex; gap:28px; align-items:flex-start; flex-wrap:wrap;}
+  .ppt-stat-cards{flex:0 0 220px; display:flex; flex-direction:column; gap:16px;}
+  .ppt-stat-card{background:#fff; border:1px solid var(--ppt-border); border-radius:8px; padding:16px 18px;}
+  .ppt-stat-label{font-size:10.5px; font-weight:700; letter-spacing:0.04em; color:var(--ppt-gray); text-transform:uppercase;}
+  .ppt-stat-value{font-size:26px; font-weight:800; margin:6px 0 4px; line-height:1;}
+  .ppt-stat-sub{font-size:11px; color:var(--ppt-gray);}
+  .ppt-chart-col{flex:1; min-width:340px;}
+  .ppt-chart-title{text-align:center; font-size:16px; font-weight:800; color:var(--ppt-navy); margin-bottom:6px;}
+  .ppt-chart-legend{display:flex; justify-content:center; gap:24px; margin-bottom:20px;}
+  .ppt-legend-item{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ppt-gray); font-weight:500;}
+  .ppt-legend-swatch{width:18px; height:3px; border-radius:2px; display:inline-block;}
+  .ppt-cutoff-block{margin:0 0 20px; padding:0; border-top:none; max-width:520px;}
+
+  /* --- Modal de detalle de entregables (clic en celda de "Entregables por Semana y Proyecto") --- */
+  .entregable-modal-overlay{position:fixed; inset:0; background:rgba(15,23,32,0.45); display:flex; align-items:center; justify-content:center; z-index:1000; padding:20px;}
+  .entregable-modal-overlay.hidden{display:none;}
+  .entregable-modal-card{background:#fff; border-radius:10px; width:min(560px, 100%); max-height:80vh; overflow-y:auto; box-shadow:0 20px 50px rgba(0,0,0,0.25);}
+  .entregable-modal-header{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 20px; border-bottom:1px solid var(--grid); position:sticky; top:0; background:#fff; z-index:1;}
+  .entregable-modal-title{font-size:15px; font-weight:700; color:var(--ink);}
+  .entregable-modal-close{background:none; border:none; font-size:16px; color:var(--ink-faint); cursor:pointer; padding:4px 8px; line-height:1;}
+  .entregable-modal-close:hover{color:var(--ink);}
+  .entregable-modal-body{padding:8px 20px 20px;}
+  .entregable-modal-item{padding:10px 0; border-bottom:1px solid var(--grid);}
+  .entregable-modal-item:last-child{border-bottom:none;}
+  .entregable-modal-item-title{font-weight:600; color:var(--ink); font-size:13px;}
+  .entregable-modal-item-meta{font-size:12px; color:var(--ink-dim); margin-top:4px; display:flex; flex-wrap:wrap; gap:12px;}
+
+  @media (max-width:860px){
+    .ppt-gantt-corner, .ppt-gantt-label{flex-basis:34%;}
+  }
+
 </style>
 </head>
 <body>
@@ -567,6 +651,11 @@ function setupTabButtons(){
     <span class="nav-icon">📦</span>
     <span>Entregables</span>
     <span class="count-pill" id="navEntregablesCount">0</span>
+  </div>
+  <div class="nav-item" data-page="para_ppt">
+    <span class="nav-icon">🖼️</span>
+    <span>Para PPT</span>
+    <span class="count-pill" id="navParaPptCount">0</span>
   </div>
   </nav>
 
@@ -645,8 +734,34 @@ function setupTabButtons(){
         <div id="ganttEmpty" class="main-empty">Importa un Excel con la pestaña "gantt" para ver aquí el diagrama de Gantt.</div>
 
         <div id="ganttContent" style="display:none;">
-          <div style="padding: 20px 16px;">
-            <div class="tabs-body" id="ganttMainBody"></div>
+          <div class="gantt-timeline-block" id="ganttTimelineBlock" style="display:none;">
+            <div class="gantt-timeline-header">
+              <span class="gantt-timeline-title">📅 Línea de tiempo — arrastra para filtrar</span>
+              <span class="gantt-timeline-range-label" id="ganttTimelineRangeLabel"></span>
+              <button type="button" id="ganttTimelineClearBtn" class="gantt-timeline-clear">Ver todo</button>
+            </div>
+            <div class="gantt-timeline-track" id="ganttTimelineTrack">
+              <div class="gantt-timeline-ticks" id="ganttTimelineTicks"></div>
+              <div class="gantt-timeline-selection" id="ganttTimelineSelection"></div>
+              <div class="gantt-timeline-handle gantt-timeline-handle-start" id="ganttTimelineHandleStart"></div>
+              <div class="gantt-timeline-handle gantt-timeline-handle-end" id="ganttTimelineHandleEnd"></div>
+            </div>
+          </div>
+          <div class="tabs-container">
+            <div class="tabs-header">
+              <button class="tab-button active" data-tab="gantt-classic">Diseño clásico</button>
+              <button class="tab-button" data-tab="gantt-new">Diseño nuevo</button>
+            </div>
+            <div class="tabs-content active" id="tab-gantt-classic">
+              <div style="padding: 20px 16px;">
+                <div class="tabs-body" id="ganttMainBody"></div>
+              </div>
+            </div>
+            <div class="tabs-content" id="tab-gantt-new">
+              <div style="padding: 20px 16px;">
+                <div class="tabs-body" id="ganttNewBody"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -716,9 +831,41 @@ function setupTabButtons(){
       </div>
       </div>
 
+      <!-- ============ PARA PPT ============ -->
+      <div class="page-section" id="page-para_ppt">
+        <div id="pptEmpty" class="main-empty">Importa un Excel para ver aquí las vistas listas para PPT.</div>
+
+        <div id="pptContent" style="display:none;">
+          <div class="tabs-container">
+            <div class="tabs-header">
+              <button class="tab-button active" data-tab="ppt-gantt">Diagrama de Gantt</button>
+              <button class="tab-button" data-tab="ppt-curva">Curva S</button>
+            </div>
+
+            <div class="tabs-content active" id="tab-ppt-gantt">
+              <div class="tabs-body" id="pptGanttBody"></div>
+            </div>
+
+            <div class="tabs-content" id="tab-ppt-curva">
+              <div class="tabs-body" id="pptCurvaBody"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
+</div>
+
+<div id="entregableDetailModal" class="entregable-modal-overlay hidden">
+  <div class="entregable-modal-card">
+    <div class="entregable-modal-header">
+      <div id="entregableDetailTitle" class="entregable-modal-title"></div>
+      <button type="button" class="entregable-modal-close" id="entregableDetailCloseBtn">✕</button>
+    </div>
+    <div id="entregableDetailBody" class="entregable-modal-body"></div>
+  </div>
 </div>
 
 <script>
@@ -730,7 +877,9 @@ let entregablesProjectFilter = '';    // 'inicio' | 'import' | 'tracking' | 'res
 let activeTab = 'curva'; // which tab is active in Seguimiento de Proyectos
 let respProjectFilter = ''; // filtro de proyecto en página Responsables
 let selectedResponsableFilter = ''; // filtro de responsable en página Responsables - aplica a todas las pestañas
-let prorrateoProjectFilter = ''; // filtro de proyecto en página Prorrateo de HH
+let entregablesCellDeliverables = {}; // key "semana_nivel" (o "semana___TOTAL__") -> [entregables] para el detalle al hacer clic
+let ganttFilterFrom = null; // filtro de rango de fechas de la ventana "Diagrama de Gantt" (Date o null)
+let ganttFilterTo = null;
 
 /* ================= date helpers ================= */
 
@@ -760,6 +909,16 @@ function fmtDateDM(iso){
   const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const month = meses[d.getUTCMonth()];
   return `${day}/${month}`;
+}
+
+// Formato "DD-mes" (con guion), usado en las vistas "Para PPT"
+function fmtDateDash(d){
+  if(!d) return '';
+  const dateObj = (d instanceof Date) ? d : new Date(d);
+  if(isNaN(dateObj)) return '';
+  const day = String(dateObj.getUTCDate()).padStart(2, '0');
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${day}-${meses[dateObj.getUTCMonth()]}`;
 }
 
 function getWeekNumber(date) {
@@ -804,13 +963,16 @@ function overallDateRange(){
 }
 
 function defaultCutoffDate(){
-  // Por defecto: la fecha más reciente del proyecto, no necesariamente "hoy"
-  // Esto permite seleccionar fechas pasadas sin restricciones del navegador
+  // Por defecto: la fecha de HOY, acotada al rango de semanas del proyecto
+  // (si hoy cae fuera de ese rango, se usa el límite más cercano).
   const {min, max} = overallDateRange();
-  if(max) return max;
-  
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  if(min && max){
+    if(today < min) return min;
+    if(today > max) return max;
+  }
   return today;
 }
 
@@ -1377,6 +1539,192 @@ function findGanttActivities(sheet){
   return activities;
 }
 
+// Extracción independiente para "Para PPT > Diagrama de Gantt": a diferencia de
+// findGanttActivities (que solo guarda UNA columna "Nivel" — la última que
+// encuentra — y descarta filas sin Inicio/Fin propios), esta función lee las
+// DOS columnas "Nivel" de la hoja "Detalle" (una numérica 0-4, otra de texto
+// "Etapa N") y conserva las filas de nivel 1 (resúmenes de Etapa) aunque no
+// tengan Inicio/Fin propios, para poder derivarlos de sus paquetes.
+//
+// Cuál de las dos columnas "Nivel" es la numérica y cuál la de texto NO se
+// asume por su orden en la hoja (puede variar entre archivos) — se detecta
+// muestreando los valores reales de cada columna candidata.
+function extractPPTGanttSource(sheet){
+  if(!sheet) return [];
+
+  const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+  const rows = [];
+  for(let row = range.s.r; row <= range.e.r; row++){
+    const rowData = [];
+    for(let col = range.s.c; col <= range.e.c; col++){
+      const cellAddr = XLSX.utils.encode_cell({r: row, c: col});
+      const cell = sheet[cellAddr];
+      rowData.push(cell ? cell.v : null);
+    }
+    rows.push(rowData);
+  }
+
+  let headerRowIdx = -1;
+  let cN=null, cWbs=null, cAct=null, cTipo=null, cIni=null, cFin=null, cPctReal=null;
+  let nivelCandidates = [];
+
+  for(let r=0; r<Math.min(rows.length, 15); r++){
+    const row = rows[r] || [];
+    if(!row.length) continue;
+
+    let headerCount = 0;
+    let lN=null, lWbs=null, lAct=null, lTipo=null, lIni=null, lFin=null, lPctReal=null;
+    let lNivelCandidates = [];
+
+    for(let c=0; c<row.length; c++){
+      const cell = row[c];
+      if(typeof cell !== 'string') continue;
+      const label = cell.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+      const normLabel = label.split('/')[0].trim();
+
+      if(normLabel === 'n'){ lN = c; headerCount++; }
+      else if(label.includes('cod') && label.includes('wbs')){ lWbs = c; headerCount++; }
+      else if(normLabel.includes('atividade') || normLabel.includes('actividad') || normLabel.includes('entregavel')){ lAct = c; headerCount++; }
+      else if(normLabel === 'tipo' && lTipo===null){ lTipo = c; headerCount++; }
+      else if(normLabel === 'nivel'){ lNivelCandidates.push(c); headerCount++; }
+      else if(normLabel === 'inicio'){ lIni = c; headerCount++; }
+      else if(normLabel === 'fin' || normLabel === 'fim'){ lFin = c; headerCount++; }
+      else if(label === '% real' || (normLabel.includes('real') && (label.includes('%')||label.includes('pct')))){ lPctReal = c; headerCount++; }
+    }
+
+    if(headerCount >= 6){
+      headerRowIdx = r;
+      cN=lN; cWbs=lWbs; cAct=lAct; cTipo=lTipo; cIni=lIni; cFin=lFin; cPctReal=lPctReal;
+      nivelCandidates = lNivelCandidates;
+      break;
+    }
+  }
+
+  if(headerRowIdx === -1) return [];
+
+  // Determinar, muestreando los datos, cuál columna "Nivel" candidata es la
+  // numérica (valores tipo 0,1,2,3,4) y cuál la de texto ("Etapa 1", "Total"...).
+  const isNumericish = v => {
+    if(v === null || v === undefined || v === '') return false;
+    if(typeof v === 'number') return Number.isFinite(v);
+    const n = parseFloat(String(v).replace(',', '.'));
+    return Number.isFinite(n) && String(v).trim().length <= 3;
+  };
+  const sampleEnd = Math.min(rows.length, headerRowIdx + 200);
+  let cNivelNum = null, cNivelTxt = null;
+  if(nivelCandidates.length === 1){
+    let numHits = 0, total = 0;
+    for(let r=headerRowIdx+1; r<sampleEnd; r++){
+      const v = (rows[r]||[])[nivelCandidates[0]];
+      if(v === null || v === undefined || v === '') continue;
+      total++;
+      if(isNumericish(v)) numHits++;
+    }
+    if(total && numHits / total >= 0.6) cNivelNum = nivelCandidates[0];
+    else if(total) cNivelTxt = nivelCandidates[0];
+  } else if(nivelCandidates.length >= 2){
+    const scored = nivelCandidates.map(c => {
+      let numHits = 0, total = 0;
+      for(let r=headerRowIdx+1; r<sampleEnd; r++){
+        const v = (rows[r]||[])[c];
+        if(v === null || v === undefined || v === '') continue;
+        total++;
+        if(isNumericish(v)) numHits++;
+      }
+      return {c, ratio: total ? numHits/total : 0};
+    });
+    scored.sort((a,b) => b.ratio - a.ratio);
+    cNivelNum = scored[0].c;
+    cNivelTxt = scored.length > 1 ? scored[1].c : null;
+  }
+
+  const ensureDate = (val) => {
+    if(!val) return null;
+    if(val instanceof Date) return val;
+    if(typeof val === 'number' && val > 100) return new Date((val - 25569) * 86400 * 1000);
+    return null;
+  };
+
+  const items = [];
+  for(let r=headerRowIdx+1; r<rows.length; r++){
+    const row = rows[r] || [];
+    if(!row || !row.length) continue;
+
+    const n = cN!==null ? row[cN] : null;
+    if(n === 0 || n === '0' || !n) continue;
+
+    const actividad = cAct!==null ? row[cAct] : null;
+    if(!actividad) continue;
+
+    const wbsRaw = cWbs!==null ? row[cWbs] : null;
+    const wbs = (wbsRaw===null || wbsRaw===undefined) ? '' : String(wbsRaw).trim();
+    const tipo = (cTipo!==null && row[cTipo]!==null && row[cTipo]!==undefined) ? String(row[cTipo]).trim() : '';
+
+    // Nivel: preferir la columna numérica detectada; si no hay dato válido ahí,
+    // usar la profundidad del código WBS como respaldo (ej. "1A"→1 segmento
+    // →Nivel 1; "1.1"→2 segmentos→Nivel 2), igual que ya usa el resto de la app.
+    let nivelNum = null;
+    if(cNivelNum !== null){
+      const raw = row[cNivelNum];
+      if(raw !== null && raw !== undefined && raw !== ''){
+        const parsed = parseInt(String(raw).replace(',', '.'), 10);
+        if(Number.isFinite(parsed)) nivelNum = parsed;
+      }
+    }
+    if(nivelNum === null && wbs){
+      nivelNum = wbs.split('.').length;
+    }
+
+    const etapa = (cNivelTxt!==null && row[cNivelTxt]!==null && row[cNivelTxt]!==undefined)
+      ? String(row[cNivelTxt]).trim() : '';
+
+    const inicio = ensureDate(cIni!==null ? row[cIni] : null);
+    const fin = ensureDate(cFin!==null ? row[cFin] : null);
+
+    const pctRealRaw = cPctReal!==null ? row[cPctReal] : null;
+    let pctReal = null;
+    if(pctRealRaw !== null && pctRealRaw !== undefined && pctRealRaw !== ''){
+      pctReal = (typeof pctRealRaw === 'number') ? pctRealRaw * 100 : parseFloat(String(pctRealRaw).replace(',', '.'));
+      if(Number.isNaN(pctReal)) pctReal = null;
+    }
+
+    items.push({
+      wbs,
+      tipo,
+      actividad: String(actividad).trim(),
+      nivelNum,
+      etapa,
+      inicio: inicio ? inicio.toISOString() : null,
+      fin: fin ? fin.toISOString() : null,
+      pctReal,
+    });
+  }
+
+  // Para las filas de resumen de Etapa (nivelNum===1) sin Inicio/Fin propios,
+  // derivarlos de sus paquetes (nivelNum===2 de la misma Etapa, si hay columna
+  // de texto para agrupar; si no, de todos los Nivel 2 que compartan el mismo
+  // prefijo de WBS antes del primer punto).
+  items.forEach(it => {
+    if(it.nivelNum === 1 && (!it.inicio || !it.fin)){
+      let hijos;
+      if(it.etapa){
+        hijos = items.filter(x => x.nivelNum === 2 && x.etapa === it.etapa && x.inicio && x.fin);
+      } else {
+        const prefix = it.wbs ? it.wbs.split('.')[0].replace(/[^0-9]/g,'') : '';
+        hijos = prefix ? items.filter(x => x.nivelNum === 2 && x.inicio && x.fin && x.wbs && x.wbs.split('.')[0] === prefix) : [];
+      }
+      if(hijos.length){
+        const minIni = hijos.reduce((min,x) => !min || x.inicio < min ? x.inicio : min, null);
+        const maxFin = hijos.reduce((max,x) => !max || x.fin > max ? x.fin : max, null);
+        if(!it.inicio) it.inicio = minIni;
+        if(!it.fin) it.fin = maxFin;
+      }
+    }
+  });
+
+  return items;
+}
+
 function extractProject(workbook, filename){
   const curvaSheetName = findCurvaSSheetName(workbook);
   if(!curvaSheetName){
@@ -1405,7 +1753,11 @@ function extractProject(workbook, filename){
   }
   
   console.log(`✓ Actividades cargadas desde hoja "${ganttSheetUsed}": ${ganttRows.length} filas`);
-  
+
+  // Fuente independiente para "Para PPT > Diagrama de Gantt" (filas de Nivel 1 y 2
+  // de la hoja "Detalle", con fechas basadas en la columna "Fin" del Excel).
+  const pptGanttSource = workbook.Sheets['Detalle'] ? extractPPTGanttSource(workbook.Sheets['Detalle']) : [];
+
   // Leer info del header (intenta Gantt, si no existe usa un default)
   let name = filename, semana_corte = null, hasta_el = null;
   if(workbook.Sheets['Gantt']){
@@ -1415,7 +1767,6 @@ function extractProject(workbook, filename){
     hasta_el = headerData.hasta_el;
   }
   
-  const prorrateoData = workbook.Sheets['Gantt'] ? extractProrrrateoHH(workbook.Sheets['Gantt']) : null;
 
   return {
     file: filename,
@@ -1431,7 +1782,7 @@ function extractProject(workbook, filename){
     etapa2,
     etapa2Real,
     ganttRows,
-    prorrateoData,
+    pptGanttSource,
   };
 }
 
@@ -2148,8 +2499,8 @@ function setPage(page){
     renderResponsables();
   } else if(page === 'entregables') {
     renderEntregables();
-  } else if(page === 'prorrateo') {
-    renderProrrateo();
+  } else if(page === 'para_ppt') {
+    renderParaPPT();
   }
 }
 
@@ -2179,9 +2530,9 @@ function updateHeader(){
   } else if(currentPage === 'entregables'){
     title.textContent = 'Entregables';
     sub.textContent = hasProjects ? `${PROJECTS.length} proyecto(s) cargado(s)` : 'Importa tu Excel para ver entregables.';
-  } else if(currentPage === 'prorrateo'){
-    title.textContent = 'Prorrateo de HH';
-    sub.textContent = hasProjects ? `${PROJECTS.length} proyecto(s) · Horas prorratadas por semana y responsable` : 'Importa tu Excel para ver prorrateo de HH.';
+  } else if(currentPage === 'para_ppt'){
+    title.textContent = 'Para PPT';
+    sub.textContent = hasProjects ? 'Vistas listas para copiar a una presentación' : 'Importa tu Excel para generar las vistas para PPT.';
   }
 }
 
@@ -2197,16 +2548,26 @@ function attachTabListeners(){
       const tabName = el.dataset.tab;
       activeTab = tabName;
       console.log('TAB CLICKED: ' + tabName);
-      
-      // Actualizar botones activos
-      document.querySelectorAll('.tab-button').forEach(btn => {
+
+      // Alcance = solo este grupo de pestañas (su .tabs-container), para que
+      // clickear una pestaña en una sección (ej. "Para PPT") no desactive las
+      // pestañas de otra sección (ej. "Diagrama de Gantt" o "Curva S").
+      const scope = el.closest('.tabs-container') || document;
+
+      // Actualizar botones activos (solo dentro de este grupo)
+      scope.querySelectorAll('.tab-button').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabName);
       });
-      
-      // Actualizar contenido activo
-      document.querySelectorAll('.tabs-content').forEach(content => {
+
+      // Actualizar contenido activo (solo dentro de este grupo)
+      scope.querySelectorAll('.tabs-content').forEach(content => {
         content.classList.toggle('active', content.id === 'tab-' + tabName);
       });
+
+      // Al mostrar una pestaña recién visible (ej. "Diseño nuevo"), elementos que
+      // dependían de medir su tamaño/posición en pantalla (como el encabezado fijo
+      // del Gantt) necesitan recalcularse — disparamos un "resize" sintético.
+      window.dispatchEvent(new Event('resize'));
     });
   });
 }
@@ -2333,173 +2694,6 @@ function initColumnResizing(){
 // Reinicializar el resize después de cada render
 
 /* ================= Tracking page content ================= */
-
-
-function extractProrrrateoHH(worksheet){
-  console.log('DEBUG extractProrrrateoHH: iniciando...');
-  
-  if(!worksheet){
-    console.log('ERROR: worksheet es null');
-    return { actividades: [], responsables: [], semanas: [], hhPorResponsable: {} };
-  }
-  
-  const actividades = [];
-  
-  for(let row = 8; row < 200; row++){
-    const cod = worksheet['A' + row]?.v;
-    const nivel = worksheet['C' + row]?.v;
-    const wbs = worksheet['D' + row]?.v;
-    const actividad = worksheet['E' + row]?.v;
-    const tipo = worksheet['F' + row]?.v;
-    const inicio = worksheet['G' + row]?.v;
-    const fin = worksheet['H' + row]?.v;
-    const hhTotal = worksheet['L' + row]?.v;
-    const estado = worksheet['N' + row]?.v;
-    const pctOri = worksheet['P' + row]?.v;
-    const pctReal = worksheet['V' + row]?.v;
-    const pctDif = worksheet['R' + row]?.v;
-    
-    if(!actividad) continue;
-    
-    actividades.push({
-      cod: cod || '',
-      nivel: nivel || '',
-      wbs: wbs || '',
-      actividad: String(actividad),
-      tipo: tipo || '',
-      inicio: inicio,
-      fin: fin,
-      hhTotal: typeof hhTotal === 'number' ? hhTotal : '',
-      estado: estado || '',
-      pctOri: typeof pctOri === 'number' ? (pctOri * 100).toFixed(1) : '',
-      pctReal: typeof pctReal === 'number' ? (pctReal * 100).toFixed(1) : '',
-      pctDif: typeof pctDif === 'number' ? (pctDif * 100).toFixed(1) : ''
-    });
-  }
-  
-  console.log('DEBUG extractProrrrateoHH: actividades encontradas: ' + actividades.length);
-  if(actividades.length > 0) console.log('  Primera: ' + actividades[0].actividad);
-  
-  return {
-    actividades: actividades,
-    responsables: [],
-    semanas: [],
-    hhPorResponsable: {}
-  };
-}
-
-
-function buildProrrateoTable(projects, projectFilter = ''){
-  console.log('buildProrrateoTable: proyectos=' + (projects ? projects.length : 0));
-  
-  if(!projects || projects.length === 0) return '<div style="padding:20px;">Sin proyectos</div>';
-  
-  const all_activities = [];
-  projects.forEach((p, idx) => {
-    if(projectFilter && p.name !== projectFilter) return;
-    if(!p.prorrateoData || !p.prorrateoData.actividades) return;
-    p.prorrateoData.actividades.forEach(a => all_activities.push(a));
-  });
-  
-  console.log('Total actividades: ' + all_activities.length);
-  if(all_activities.length === 0) return '<div style="padding:20px;">Sin datos</div>';
-  
-  const actToShow = all_activities.slice(0, 10);
-  
-  let html = '<div style="padding:20px; background:#fff; border:2px solid #c41e3a;">';
-  html += '<div style="color:green; font-weight:bold; font-size:16px; margin-bottom:20px;">✓ PRORRATEO CARGADO: ' + all_activities.length + ' actividades</div>';
-  html += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
-  html += '<tr style="background:#c41e3a; color:white; font-weight:bold;"><th style="border:1px solid #c41e3a; padding:12px; text-align:left;">Actividad</th><th style="border:1px solid #c41e3a; padding:12px; text-align:right;">HH</th></tr>';
-  
-  actToShow.forEach((a, i) => {
-    const bg = i%2?'#f5f5f5':'#fff';
-    html += '<tr style="background:' + bg + ';">';
-    html += '<td style="border:1px solid #ddd; padding:10px;">' + a.actividad + '</td>';
-    html += '<td style="border:1px solid #ddd; padding:10px; text-align:right; font-weight:bold;">' + (a.hhTotal || '-') + '</td>';
-    html += '</tr>';
-  });
-  
-  html += '</table>';
-  html += '<div style="margin-top:20px; color:#666; font-size:12px;">Mostrando ' + actToShow.length + ' de ' + all_activities.length + '</div>';
-  html += '</div>';
-  return html;
-}
-
-
-function buildProrrateoGrafico(projects, projectFilter = ''){
-  if(!projects || projects.length === 0) return '<div style="padding:20px;">Sin proyectos</div>';
-  
-  let total_hh = 0;
-  let total_act = 0;
-  
-  projects.forEach(p => {
-    if(projectFilter && p.name !== projectFilter) return;
-    if(!p.prorrateoData || !p.prorrateoData.actividades) return;
-    
-    p.prorrateoData.actividades.forEach(a => {
-      if(a.hhTotal) {
-        total_hh += Number(a.hhTotal);
-        total_act++;
-      }
-    });
-  });
-  
-  let html = '<div style="padding:20px; text-align:center;">';
-  html += '<div style="font-size:24px; font-weight:bold; color:#c41e3a;">' + total_hh + '</div>';
-  html += '<div style="color:#666; margin-top:8px;">Total HH asignadas</div>';
-  html += '<div style="color:#999; margin-top:4px; font-size:12px;">' + total_act + ' actividades</div>';
-  html += '</div>';
-  return html;
-}
-
-
-function renderProrrateo(){
-  if(currentPage !== 'prorrateo') return;
-  
-  const empty_el = document.getElementById('prorrateoEmpty');
-  const content_el = document.getElementById('prorrateoContent');
-  
-  const has_proj = PROJECTS.length > 0;
-  
-  empty_el.style.display = has_proj ? 'none' : 'block';
-  content_el.style.display = has_proj ? 'block' : 'none';
-  
-  if(!has_proj) return;
-  
-  updateHeader();
-  
-  // Botones de proyectos
-  const filterButtonsDiv = document.getElementById('prorrateoProjectFilterButtons');
-  filterButtonsDiv.innerHTML = PROJECTS.map((p, idx) => `
-    <button class="proj-pill ${idx===selectedProjectIdx ? 'active' : ''}" onclick="selectedProjectIdx=${idx}; render();" style="padding:8px 12px; border:1px solid var(--grid); background:${idx===selectedProjectIdx ? '#c41e3a' : 'white'}; color:${idx===selectedProjectIdx ? 'white' : 'var(--ink)'}; border-radius:4px; cursor:pointer; font-size:12px; font-weight:600;">${p.name}</button>
-  `).join('');
-  
-  const proj_idx = selectedProjectIdx !== null ? selectedProjectIdx : 0;
-  
-  // TAB 1: Dashboard - Tabla y Gráfico
-  const tabla_html = buildProrrateoTable(PROJECTS, proj_idx);
-  document.getElementById('prorrateoContent_Table').innerHTML = tabla_html;
-  
-  const grafico_el = document.getElementById('prorrateoChartsContainer');
-  if(grafico_el) {
-    grafico_el.style.display = 'block';
-    const grafico_html = buildProrrateoGrafico(PROJECTS, proj_idx);
-    document.querySelectorAll('#prorrateo-dashboard canvas').forEach(canvas => {
-      const ctx = canvas.getContext('2d');
-      if(ctx) {
-        // Gráficos serán renderizados por buildProrrateoGrafico si es necesario
-      }
-    });
-  }
-  
-  // TAB 2: Detalle - Usar misma tabla
-  document.getElementById('prorrateoStats').innerHTML = '';
-  document.getElementById('prorrateoStats').style.display = 'none';
-  
-  // TAB 3 & 4: HH por Día y Responsable - Mostrar tabla para ahora
-  document.getElementById('prorrateoContentDias').innerHTML = tabla_html;
-  document.getElementById('prorrateoContentResp').innerHTML = tabla_html;
-}
 
 
 function renderTracking(){
@@ -2947,151 +3141,6 @@ Proyecto: ${a.projectName}">
 
 
 
-function buildEntregablesGantt(projects, projectFilter = ''){
-  // Agrupar solo entregables por responsable
-  const activitiesByResponsable = {};
-  const allProjects = projects.length > 0 ? projects : [];
-  
-  allProjects.forEach(proj => {
-    if(projectFilter && proj.name !== projectFilter) return;
-    
-    if(proj.ganttRows){
-      proj.ganttRows.forEach(r => {
-        // Filtrar solo entregables (buscar "Entregável", "Entregavel", "entregable")
-        const tipo = r.tipo ? r.tipo : '';
-        const tipoLower = tipo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        if(!tipoLower.includes('entregavel')) return;
-        
-        const resp = r.responsable || '—';
-        if(!activitiesByResponsable[resp]){
-          activitiesByResponsable[resp] = [];
-        }
-        activitiesByResponsable[resp].push({...r, projectName: proj.name, progArray: proj.prog, realArray: proj.real, weekLabels: proj.week_labels });
-      });
-    }
-  });
-
-  const responsables = Object.keys(activitiesByResponsable).sort();
-  if(!responsables.length){
-    return `<div class="gantt-empty">No se encontraron entregables con responsables.</div>`;
-  }
-
-  // Calcular escala de tiempo global
-  let allTimes = [];
-  responsables.forEach(resp => {
-    allTimes = allTimes.concat(
-      activitiesByResponsable[resp].flatMap(r => [parseUTCDate(r.inicio).getTime(), parseUTCDate(r.fin).getTime()])
-    );
-  });
-  
-  const minT = Math.min(...allTimes), maxT = Math.max(...allTimes);
-  const span = (maxT - minT) || 1;
-  const pct = iso => ((parseUTCDate(iso).getTime() - minT) / span) * 100;
-
-  // Generar ticks dinámicamente cada 7 días desde minT (fecha mínima real)
-  const projectStart = new Date(minT);  // ✅ Usa minT en lugar de fecha fija
-  
-  // Calcular cuántas semanas hay entre inicio y fin
-  const daysDiff = Math.ceil((maxT - minT) / (1000 * 60 * 60 * 24));
-  const numWeeks = Math.ceil(daysDiff / 7) + 1; // +1 para asegurar que cubre todo
-  
-  const ticksHtml = Array.from({length: numWeeks}, (_, i) => {
-    const tickDate = new Date(projectStart);
-    tickDate.setDate(tickDate.getDate() + i * 7);
-    const p = ((tickDate.getTime() - minT) / span) * 100;
-    
-    // No mostrar si está fuera del rango
-    if(p < 0 || p > 100) return '';
-    
-    const day = String(tickDate.getUTCDate()).padStart(2, '0');
-    const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-    const month = meses[tickDate.getUTCMonth()];
-    return `<div class="g-tick" style="left:${p}%;">${day}/${month}</div>`;
-  }).filter(x => x).join('');
-
-  let cutoffTag = '';
-  if(selectedDate){
-    const cp = ((selectedDate.getTime() - minT) / span) * 100;
-    if(cp >= 0 && cp <= 100){
-      cutoffTag = `<div class="g-cutoff-tag" style="left:${cp}%;">Corte</div>`;
-    }
-  }
-
-  // Construir tabla por responsable
-  let respHtml = '';
-  responsables.forEach(resp => {
-    const activities = activitiesByResponsable[resp];
-    
-    // Header del responsable
-    respHtml += `
-      <div style="background: var(--panel-2); padding: 12px 16px; margin-top: 16px; border-radius: 6px; font-weight: 600; color: var(--ink); border-left: 3px solid var(--real);">
-        👤 ${resp} (${activities.length} entregables)
-      </div>
-      <div class="gantt-wrap" style="overflow-x: auto; overflow-y: visible; margin-top: 8px;">
-        <div class="gantt-header" data-gantt-header>
-          <div class="gantt-header-col" style="width: 70px;"><span>WBS</span><span class="gantt-resizer"></span></div>
-          <div class="gantt-header-col" style="width: 180px;"><span>Entregable</span><span class="gantt-resizer"></span></div>
-          <div class="gantt-header-col" style="width: 80px;"><span>Inicio</span><span class="gantt-resizer"></span></div>
-          <div class="gantt-header-col" style="width: 80px;"><span>Fin</span><span class="gantt-resizer"></span></div>
-          <div class="gantt-header-col" style="width: 70px; color: var(--plan);"><span>% Prog</span><span class="gantt-resizer"></span></div>
-          <div class="gantt-header-col" style="width: 70px; color: var(--plan);"><span>% Dif</span><span class="gantt-resizer"></span></div>
-          <div class="gantt-ticks">${ticksHtml}${cutoffTag}</div>
-        </div>
-        <div class="gantt-body">
-    `;
-    activities.forEach(r => {
-      const isMilestone = String(r.tipo).toLowerCase().includes('hito');
-      const isGroup = r.level === 1 && (r.tipo === '-' || !r.tipo || String(r.tipo).trim() === '');
-      const left = pct(r.inicio);
-      const width = Math.max(pct(r.fin) - left, 0.6);
-      const realPct = r.real===null ? 0 : Math.max(0, Math.min(1, r.real)) * 100;
-
-      let barHtml;
-      if(isMilestone){
-        barHtml = `<div class="g-milestone" style="left:${pct(r.fin)}%;" title="${r.actividad}"></div>`;
-      } else if(isGroup){
-        barHtml = `<div class="g-group" style="left:${left}%; width:${width}%;" title="${r.actividad}"></div>`;
-      } else {
-        barHtml = `<div class="g-bar" style="left:${left}%; width:${width}%; background:rgba(61,122,139,0.25); border:1px solid var(--plan);" title="${r.actividad} — ${fmtPct(r.real)}"><div class="g-bar-fill" style="width:${realPct}%; background:var(--real); border-radius:3px;"></div></div>`;
-      }
-
-      const labelClass = isGroup ? 'gantt-label lvl1' : 'gantt-label';
-      const dateIni = fmtDateDM(r.inicio);
-      const dateFin = fmtDateDM(r.fin);
-      const advReal = fmtPct(r.real);
-
-      respHtml += `
-        <div class="gantt-row" data-level="${r.level}">
-          <div class="gantt-col" data-col="0" style="font-size: 11px; color: var(--ink-faint); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">${r.wbs || '—'}</div>
-          <div class="gantt-col ${labelClass}" data-col="2" style="padding-left:${(r.level-1)*12 + 10}px; width: 180px;" title="${r.actividad}">${r.actividad}</div>
-          <div class="gantt-col" data-col="3" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateIni}</div>
-          <div class="gantt-col" data-col="4" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateFin}</div>
-          <div class="gantt-col" data-col="5" style="font-size: 12px; font-weight: 600; color: var(--real); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">${advReal}</div>
-          <div class="gantt-col" data-col="6" style="font-size: 12px; font-weight: 600; color: var(--plan); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">—</div>
-          <div class="gantt-col" data-col="7" style="font-size: 12px; font-weight: 600; color: var(--plan); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">—</div>
-          <div class="gantt-track">${barHtml}</div>
-        </div>`;
-    });
-    
-    respHtml += `
-        </div>
-      </div>`;
-  });
-
-  return `
-    <div class="gantt-legend">
-      <div class="item"><span class="sw st"></span> Etapa (resumen)</div>
-      <div class="item"><span class="sw g"></span><span class="sw f" style="margin-left:-16px; width:8px;"></span> Entregable (% real)</div>
-      <div class="item"><span class="dia"></span> Hito</div>
-    </div>
-    ${respHtml}
-  `;
-}
-
-
-
-
-
 function buildEntregablesCalendarWeekly(projects, projectFilter = ''){
   // Paleta de colores
   const colorPalette = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B', '#76D7C4'];
@@ -3256,12 +3305,32 @@ function buildEntregablesCalendarWeekly(projects, projectFilter = ''){
 
 
 
+// % Real de un entregable, normalizado a número (0-100). pctReal puede venir
+// como número (1 o 100) o string ("100.0", "100", "100%", "1", "1.0").
+function entregablePctRealNum(d){
+  const pctReal = d.pctReal || 0;
+  if (typeof pctReal === 'number') return pctReal;
+  if (typeof pctReal === 'string') {
+    const cleanStr = pctReal.replace('%', '').trim();
+    const numVal = parseFloat(cleanStr);
+    return isNaN(numVal) ? 0 : numVal;
+  }
+  return 0;
+}
+// Un entregable se considera completado/atendido cuando su % Real es 100%
+// (representado como 100 o, en algunos casos, como fracción 1).
+function isDeliverableComplete(d){
+  const numVal = entregablePctRealNum(d);
+  return (numVal === 100 || numVal === 1);
+}
+
 function buildEntregablesDashboard(projects, projectFilter = ''){
   // Recolectar entregables
   const deliverables = [];
   const allProjects = projects.length > 0 ? projects : [];
   const projectColorMap = {};
   const projectStats = {};
+  entregablesCellDeliverables = {}; // se reconstruye en cada render
   
   console.log('🔍 buildEntregablesDashboard:');
   console.log('   Proyectos recibidos:', allProjects.length);
@@ -3329,26 +3398,13 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
     weekStats[weekKey].total += 1;
     
     // Considerar completado si % Real === 100%
-    const pctReal = d.pctReal || 0;
-    
-    // pctReal puede ser: número (1 o 100) o string ("100.0" o "100" o "100%")
-    let isComplete = false;
-    
-    if (typeof pctReal === 'number') {
-      // Número: 1 o 100
-      isComplete = (pctReal === 1 || pctReal === 1.0 || pctReal === 100);
-    } else if (typeof pctReal === 'string') {
-      // String: "100.0", "100", "100%", "1", "1.0"
-      const cleanStr = pctReal.replace('%', '').trim();
-      const numVal = parseFloat(cleanStr);
-      isComplete = (numVal === 100 || numVal === 1);
-    }
-    
+    const isComplete = isDeliverableComplete(d);
+
     // Debug
     if(d.actividad && isComplete) {
-      console.log(`✓ ATENDIDO: ${d.actividad}: pctReal=${pctReal} (type=${typeof pctReal})`);
+      console.log(`✓ ATENDIDO: ${d.actividad}: pctReal=${d.pctReal}`);
     }
-    
+
     if(isComplete) weekStats[weekKey].completado += 1;
     
     // Por semana y nivel (según fecha FIN)
@@ -3358,6 +3414,15 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
     }
     weekProjectStats[key].total += 1;
     if(isComplete) weekProjectStats[key].completado += 1;
+
+    // Guardar el entregable real para poder mostrar el detalle al hacer clic
+    // en la celda (por semana+nivel, y también agrupado solo por semana para
+    // la fila TOTAL).
+    if(!entregablesCellDeliverables[key]) entregablesCellDeliverables[key] = [];
+    entregablesCellDeliverables[key].push(d);
+    const totalKey = `${weekKey}___TOTAL__`;
+    if(!entregablesCellDeliverables[totalKey]) entregablesCellDeliverables[totalKey] = [];
+    entregablesCellDeliverables[totalKey].push(d);
   });
 
   let html = '<div style="display: flex; flex-direction: column; gap: 24px; padding: 16px;">';
@@ -3431,8 +3496,9 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
       if(stat){
         const porcentaje = Math.round((stat.completado / stat.total) * 100);
         const textColor = porcentaje >= 75 ? '#2E7D46' : porcentaje >= 50 ? '#D9A441' : '#C00000';
-        
-        cellHtml = `<td style="padding: 12px 8px; text-align: center; color: ${textColor}; font-weight: 600; border: none; background: ${bgColor};" title="Completados/Total: ${stat.completado}/${stat.total} (${porcentaje}%)">
+        const clickable = stat.total > 0;
+
+        cellHtml = `<td class="${clickable ? 'entregable-cell' : ''}" ${clickable ? `data-week="${week}" data-nivel="${nivel}"` : ''} style="padding: 12px 8px; text-align: center; color: ${textColor}; font-weight: 600; border: none; background: ${bgColor}; ${clickable ? 'cursor:pointer;' : ''}" title="${clickable ? 'Clic para ver el detalle — ' : ''}Completados/Total: ${stat.completado}/${stat.total} (${porcentaje}%)">
           ${stat.total > 0 ? `${stat.completado}/${stat.total}` : '-'}
         </td>`;
       } else {
@@ -3456,8 +3522,9 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
     const stat = totalPorSemana[week];
     const porcentaje = stat.total > 0 ? Math.round((stat.completado / stat.total) * 100) : 0;
     const textColor = porcentaje >= 75 ? '#2E7D46' : porcentaje >= 50 ? '#D9A441' : '#C00000';
-    
-    html += `<td style="padding: 12px 8px; text-align: center; color: ${textColor}; font-weight: 700; border: none; background: #F5F7FA;" title="Total semana ${week}: ${stat.completado}/${stat.total} (${porcentaje}%)">
+    const clickable = stat.total > 0;
+
+    html += `<td class="${clickable ? 'entregable-cell' : ''}" ${clickable ? `data-week="${week}" data-nivel="__TOTAL__"` : ''} style="padding: 12px 8px; text-align: center; color: ${textColor}; font-weight: 700; border: none; background: #F5F7FA; ${clickable ? 'cursor:pointer;' : ''}" title="${clickable ? 'Clic para ver el detalle — ' : ''}Total semana ${week}: ${stat.completado}/${stat.total} (${porcentaje}%)">
       ${stat.total > 0 ? `${stat.completado}/${stat.total}` : '-'}
     </td>`;
   });
@@ -3479,7 +3546,7 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
       nivelProgressStats[d.nivelName] = { total: 0, completado: 0 };
     }
     nivelProgressStats[d.nivelName].total += 1;
-    if(d.pendientePor && d.pendientePor.toLowerCase() === 'cerrado') nivelProgressStats[d.nivelName].completado += 1;
+    if(isDeliverableComplete(d)) nivelProgressStats[d.nivelName].completado += 1;
   });
   
   Object.keys(nivelProgressStats).sort().forEach(key => {
@@ -3502,11 +3569,11 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
   
   html += '</div></div>';
   
-  // GRÁFICO 3: Resumen General (basado en "Pendiente por")
+  // GRÁFICO 3: Resumen General (basado en % Real)
   const totalEntregables = deliverables.length;
-  const completados = deliverables.filter(d => d.pendientePor && d.pendientePor.toLowerCase() === 'cerrado').length;
+  const completados = deliverables.filter(d => isDeliverableComplete(d)).length;
   const porcentajeGeneral = totalEntregables > 0 ? Math.round((completados / totalEntregables) * 100) : 0;
-  const enProgreso = deliverables.filter(d => d.pendientePor && d.pendientePor.toLowerCase() !== 'cerrado' && d.pendientePor !== '').length;
+  const enProgreso = deliverables.filter(d => !isDeliverableComplete(d) && entregablePctRealNum(d) > 0).length;
   const noIniciado = totalEntregables - completados - enProgreso;
   
   html += `<div style="border: 1px solid var(--grid); border-radius: 8px; overflow: hidden;">
@@ -3597,6 +3664,455 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
 
 
 
+/* ================= Para PPT (Diagrama de Gantt + Curva S con diseño de diapositiva) ================= */
+
+// Núcleo compartido para las dos variantes del Gantt "estilo PPT":
+// - buildGanttPPT: la de "Para PPT" (Nivel 1 y 2, sin Etapa 0, con leyenda por Etapa)
+// - buildGanttFullPPT: la del nuevo diseño dentro de "Diagrama de Gantt" (todas las
+//   actividades, sin filtro de nivel, sin fila de botones/pills abajo)
+function buildGanttPPTCore(proj, opts){
+  opts = opts || {};
+  const levels = opts.levels || null;          // null = todos los niveles
+  const excludeEtapa0 = !!opts.excludeEtapa0;
+  const showPills = opts.showPills !== false;   // por defecto true
+  const showEtapaLegend = !!opts.showEtapaLegend;
+  const subtitleText = opts.subtitleText || 'Diagrama de Gantt';
+
+  // Fechas de cada fila: su propia columna "Fin"/"Inicio" del Excel (con Inicio/Fin
+  // agregados desde sus paquetes para las filas de Etapa que no traen fecha propia;
+  // ver extractPPTGanttSource).
+  const rows = (proj.pptGanttSource || []).filter(r => {
+    if(!r.inicio || !r.fin) return false;
+    if(levels && !levels.includes(r.nivelNum)) return false;
+    if(excludeEtapa0 && /etapa\s*0/i.test(r.etapa || '')) return false;
+    return true;
+  });
+
+  if(!rows.length){
+    return '<div class="ppt-empty">No se encontraron actividades con fechas de Inicio/Fin en la hoja "Detalle".</div>';
+  }
+
+  // El rango de fechas del diagrama se basa exclusivamente en las columnas
+  // Inicio/Fin de estas filas (no en las semanas de la hoja Curva S).
+  const allTimes = rows.flatMap(r => [new Date(r.inicio).getTime(), new Date(r.fin).getTime()]);
+  const minT = Math.min(...allTimes);
+  const maxT = Math.max(...allTimes);
+  const span = (maxT - minT) || 1;
+  const pctX = t => ((t - minT) / span) * 100; // 0-100, relativo al área de barras (track)
+
+  // Corte = última semana de la Curva S con % Real informado (referencia visual;
+  // se posiciona sobre este mismo eje de fechas basado en Fin).
+  let cutIdx = -1;
+  (proj.real || []).forEach((v,i) => { if(v !== null && v !== undefined) cutIdx = i; });
+  const weekDates = (proj.week_dates || []).map(d => d ? new Date(d) : null);
+  const cutDate = (cutIdx >= 0 && weekDates[cutIdx]) ? weekDates[cutIdx] : null;
+  const cutDateInRange = cutDate && cutDate.getTime() >= minT && cutDate.getTime() <= maxT;
+
+  if(opts.showColumns){
+    return buildGanttPPTColumnsView(proj, rows, {minT, maxT, span, pctX, cutDate, cutDateInRange, subtitleText});
+  }
+
+  // El label ocupa 26% del ancho total (ver CSS .ppt-gantt-corner / .ppt-gantt-label);
+  // para posicionar elementos relativos al ancho COMPLETO (ej. la línea de corte)
+  // hay que convertir el % relativo al track al % relativo al total.
+  const LABEL_PCT = 26;
+  const toFullPct = trackPct => LABEL_PCT + (trackPct/100) * (100 - LABEL_PCT);
+
+  const rowsHtml = rows.map(r => {
+    const iniT = new Date(r.inicio).getTime();
+    const finT = new Date(r.fin).getTime();
+    const left = pctX(iniT);
+    const width = Math.max(pctX(finT) - left, 0.8);
+    const pctReal = (r.pctReal !== null && r.pctReal !== undefined)
+      ? Math.max(0, Math.min(100, r.pctReal))
+      : 0;
+    const isMgmt = r.wbs === '0.0';
+    const isEtapa = r.nivelNum === 1;
+    const barInner = isMgmt ? '' : `<div class="ppt-gantt-bar-done" style="width:${pctReal}%;"></div>`;
+    const barClass = isMgmt ? ' ppt-bar-mgmt' : (isEtapa ? ' ppt-bar-etapa' : '');
+    const labelClass = isEtapa ? ' ppt-gantt-label-etapa' : '';
+    const indent = levels ? '' : `padding-left:${Math.max(0, (r.nivelNum||1) - 1) * 14}px;`;
+    return `
+      <div class="ppt-gantt-row">
+        <div class="ppt-gantt-label${labelClass}" style="${indent}" title="${r.actividad}">${r.actividad}</div>
+        <div class="ppt-gantt-track">
+          <div class="ppt-gantt-bar${barClass}" style="left:${left}%; width:${width}%;" title="${r.actividad} — ${pctReal.toFixed(1)}% real">${barInner}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const ticksHtml = weekDates.map(d => {
+    if(!d) return '';
+    const t = d.getTime();
+    if(t < minT || t > maxT) return '';
+    const left = pctX(t);
+    return `<div class="ppt-gtick" style="left:${left}%;">${fmtDateDash(d)}</div>`;
+  }).join('');
+
+  const cutLine = cutDateInRange
+    ? `<div class="ppt-gantt-cutline" style="left:${toFullPct(pctX(cutDate.getTime()))}%;"><span>Corte ${fmtDateDash(cutDate)}</span></div>`
+    : '';
+
+  let pillsHtml = '';
+  if(showPills){
+    const startLabel = fmtDateDash(new Date(minT));
+    const endLabel = fmtDateDash(new Date(maxT));
+
+    let middlePills = '';
+    if(showEtapaLegend){
+      // Una pastilla por cada Etapa (fila Nivel 1) mostrando su propia fecha Fin
+      // (la misma que usa su barra en el diagrama), en vez del % de avance.
+      const etapaRows = rows.filter(r => r.nivelNum === 1 && r.etapa);
+      middlePills = etapaRows.map(r =>
+        `<div class="ppt-pill ppt-pill-teal">${r.etapa} ${fmtDateDash(new Date(r.fin))}</div>`
+      ).join('');
+    } else {
+      const avanceReal = (cutIdx >= 0 && proj.real[cutIdx] !== null && proj.real[cutIdx] !== undefined)
+        ? Math.round(proj.real[cutIdx] * 100) : null;
+      middlePills = avanceReal !== null ? `<div class="ppt-pill ppt-pill-teal">Avance real: ${avanceReal}%</div>` : '';
+    }
+
+    pillsHtml = `
+      <div class="ppt-pills">
+        <div class="ppt-pill ppt-pill-teal">Inicio: ${startLabel}</div>
+        ${cutDateInRange ? `<div class="ppt-pill ppt-pill-red">Corte: ${fmtDateDash(cutDate)}</div>` : ''}
+        ${middlePills}
+        <div class="ppt-pill ppt-pill-navy">Término: ${endLabel}</div>
+      </div>`;
+  }
+
+  return `
+    <div class="ppt-card">
+      <div class="ppt-title">${proj.name || 'Cronograma del proyecto'}</div>
+      <div class="ppt-subtitle">${subtitleText}${cutDateInRange ? ` · Corte ${fmtDateDash(cutDate)}` : ''}</div>
+      <div class="ppt-gantt-wrap">
+        <div class="ppt-gantt-header">
+          <div class="ppt-gantt-corner"></div>
+          <div class="ppt-gantt-ticks">${ticksHtml}</div>
+        </div>
+        <div class="ppt-gantt-rows">${rowsHtml}</div>
+        ${cutLine}
+      </div>
+      ${pillsHtml}
+    </div>`;
+}
+
+// Variante con columnas (WBS, Tipo, Inicio, Fin, % Real) además de la barra de
+// tiempo, usada por "Diagrama de Gantt > Diseño nuevo". Todo el ancho (columnas +
+// línea de tiempo) es fijo en píxeles y va dentro de un contenedor con scroll
+// horizontal (con una barra de scroll extra arriba, antes del diagrama, además
+// de la barra nativa de abajo).
+// Color de fondo de fila según el Nivel numérico (columna "Nivel"/"Nivel2" del
+// Excel, 0 = Etapa 0 / gestión, 1 = resumen de Etapa, 2 = paquete de trabajo, ...),
+// para distinguir visualmente la jerarquía de cada fila.
+const NIVEL_ROW_BG = {
+  0: 'rgba(244,123,32,0.10)',
+  1: 'rgba(45,122,140,0.12)',
+  2: 'rgba(22,58,95,0.05)',
+  3: '#ffffff',
+  4: 'transparent',
+};
+function nivelRowBg(nivelNum){
+  return NIVEL_ROW_BG[nivelNum] !== undefined ? NIVEL_ROW_BG[nivelNum] : 'transparent';
+}
+
+function buildGanttPPTColumnsView(proj, rows, ctx){
+  const {minT, maxT, pctX} = ctx;
+
+  const TRACK_W = 900;               // ancho fijo, en px, del área de barras/tiempo
+  const COL_WBS = 68, COL_LABEL = 300, COL_TIPO = 100, COL_INI = 66, COL_FIN = 66, COL_PCT = 62;
+  const colsWidthPx = COL_WBS + COL_LABEL + COL_TIPO + COL_INI + COL_FIN + COL_PCT;
+  const totalWidthPx = colsWidthPx + TRACK_W;
+
+  const weekDates = (proj.week_dates || []).map(d => d ? new Date(d) : null);
+  const ticksHtml = weekDates.map(d => {
+    if(!d) return '';
+    const t = d.getTime();
+    if(t < minT || t > maxT) return '';
+    return `<div class="ppt-gtick" style="left:${pctX(t)}%;">${fmtDateDash(d)}</div>`;
+  }).join('');
+
+  const fmtPctReal = v => (v !== null && v !== undefined) ? `${Math.max(0, Math.min(100, v)).toFixed(0)}%` : '—';
+
+  const rowsHtml = rows.map(r => {
+    const iniT = new Date(r.inicio).getTime();
+    const finT = new Date(r.fin).getTime();
+    const left = pctX(iniT);
+    const width = Math.max(pctX(finT) - left, 0.8);
+    const pctReal = (r.pctReal !== null && r.pctReal !== undefined) ? Math.max(0, Math.min(100, r.pctReal)) : 0;
+    const isMgmt = r.wbs === '0.0';
+    const isEtapa = r.nivelNum === 1;
+    const barInner = isMgmt ? '' : `<div class="ppt-gantt-bar-done" style="width:${pctReal}%;"></div>`;
+    const barClass = isMgmt ? ' ppt-bar-mgmt' : (isEtapa ? ' ppt-bar-etapa' : '');
+    const labelClass = isEtapa ? ' ppt-gantt-label-etapa' : '';
+    const indent = Math.max(0, (r.nivelNum || 1) - 1) * 14;
+    const rowBg = nivelRowBg(r.nivelNum);
+
+    return `
+      <div class="ppt-gantt-cols-row" style="width:${totalWidthPx}px; background:${rowBg};">
+        <div class="ppt-gantt-col" style="width:${COL_WBS}px;" title="${r.wbs || '—'}">${r.wbs || '—'}</div>
+        <div class="ppt-gantt-col ppt-gantt-col-label${labelClass}" style="width:${COL_LABEL}px; padding-left:${indent}px;" title="${r.actividad}">${r.actividad}</div>
+        <div class="ppt-gantt-col" style="width:${COL_TIPO}px;" title="${r.tipo || '—'}">${r.tipo || '—'}</div>
+        <div class="ppt-gantt-col" style="width:${COL_INI}px;">${fmtDateDash(new Date(r.inicio))}</div>
+        <div class="ppt-gantt-col" style="width:${COL_FIN}px;">${fmtDateDash(new Date(r.fin))}</div>
+        <div class="ppt-gantt-col" style="width:${COL_PCT}px;">${fmtPctReal(r.pctReal)}</div>
+        <div class="ppt-gantt-timeline-track" style="width:${TRACK_W}px;">
+          <div class="ppt-gantt-bar${barClass}" style="left:${left}%; width:${width}%;" title="${r.actividad} — ${pctReal.toFixed(1)}% real">${barInner}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const uid = proj.file ? proj.file.replace(/[^a-zA-Z0-9]/g,'_') : 'x';
+
+  const headerRowHtml = `
+    <div class="ppt-gantt-cols-row ppt-gantt-cols-header" style="width:${totalWidthPx}px;">
+      <div class="ppt-gantt-col" style="width:${COL_WBS}px;">WBS</div>
+      <div class="ppt-gantt-col ppt-gantt-col-label" style="width:${COL_LABEL}px;">Actividad</div>
+      <div class="ppt-gantt-col" style="width:${COL_TIPO}px;">Tipo</div>
+      <div class="ppt-gantt-col" style="width:${COL_INI}px;">Inicio</div>
+      <div class="ppt-gantt-col" style="width:${COL_FIN}px;">Fin</div>
+      <div class="ppt-gantt-col" style="width:${COL_PCT}px;">% Real</div>
+      <div class="ppt-gantt-timeline-header" style="width:${TRACK_W}px;">${ticksHtml}</div>
+    </div>`;
+
+  return `
+    <div class="ppt-card">
+      <div class="ppt-gantt-topscroll" id="ganttTopScroll_${uid}">
+        <div class="ppt-gantt-topscroll-inner" style="width:${totalWidthPx}px;"></div>
+      </div>
+      <!-- Mismo patrón que "Diseño clásico" (.gantt-wrap / .gantt-header / .gantt-body):
+           el encabezado queda en el flujo normal (siempre visible) y solo las FILAS
+           van dentro de una caja con alto máximo y scroll vertical propio — así el
+           encabezado nunca se pierde de vista al bajar. El scroll horizontal (de
+           ppt-gantt-scrollarea) mueve el encabezado y las filas juntos, ya que ambos
+           están dentro del mismo ppt-gantt-wrap ancho. -->
+      <div class="ppt-gantt-scrollarea" id="ganttScrollArea_${uid}">
+        <div class="ppt-gantt-wrap" style="width:${totalWidthPx}px;">
+          ${headerRowHtml}
+          <div class="ppt-gantt-rows-scrollbox">
+            <div class="ppt-gantt-rows">${rowsHtml}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// Sincroniza la barra de scroll horizontal "de arriba" (decorativa) con el
+// contenedor real que tiene el contenido ancho, para poder desplazarse sin
+// tener que bajar hasta el final del diagrama.
+function wireGanttTopScroll(containerId){
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  const topScroll = container.querySelector('.ppt-gantt-topscroll');
+  const scrollArea = container.querySelector('.ppt-gantt-scrollarea');
+  const inner = container.querySelector('.ppt-gantt-topscroll-inner');
+  const wrap = container.querySelector('.ppt-gantt-wrap');
+  if(!topScroll || !scrollArea || !inner || !wrap) return;
+
+  const syncWidth = () => { inner.style.width = wrap.scrollWidth + 'px'; };
+  syncWidth();
+
+  // Esta pestaña puede estar oculta (display:none) la primera vez que se
+  // renderiza (ej. al importar el Excel, si "Diseño nuevo" no es la pestaña
+  // activa): un elemento oculto reporta ancho 0. ResizeObserver vuelve a medir
+  // en cuanto la pestaña se hace visible.
+  if(typeof ResizeObserver !== 'undefined'){
+    const ro = new ResizeObserver(syncWidth);
+    ro.observe(wrap);
+  } else {
+    setTimeout(syncWidth, 300);
+  }
+
+  let syncing = false;
+  const applyScroll = (source, value) => {
+    if(syncing) return;
+    syncing = true;
+    if(source !== topScroll) topScroll.scrollLeft = value;
+    if(source !== scrollArea) scrollArea.scrollLeft = value;
+    syncing = false;
+  };
+  topScroll.addEventListener('scroll', () => applyScroll(topScroll, topScroll.scrollLeft));
+  scrollArea.addEventListener('scroll', () => applyScroll(scrollArea, scrollArea.scrollLeft));
+}
+
+function buildGanttPPT(proj){
+  return buildGanttPPTCore(proj, {
+    levels: [1, 2],
+    excludeEtapa0: true,
+    showPills: true,
+    showEtapaLegend: true,
+    subtitleText: 'Diagrama de Gantt por Etapa y Pacote de trabajo',
+  });
+}
+
+// Duplicado del diseño de "Para PPT > Diagrama de Gantt" pero mostrando TODAS las
+// actividades (todos los niveles, incluida Etapa 0), con columnas WBS/Tipo/Inicio/
+// Fin/% Real, scroll horizontal, y sin la fila de pills de abajo.
+function buildGanttFullPPT(proj){
+  return buildGanttPPTCore(proj, {
+    levels: null,
+    excludeEtapa0: false,
+    showPills: false,
+    showColumns: true,
+    subtitleText: 'Diagrama de Gantt — todas las actividades',
+  });
+}
+
+function buildCurvaSChartSvgPPT(proj, cutIdx, W, H){
+  const padL = 42, padR = 16, padT = 20, padB = 30;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const n = proj.week_labels.length;
+  if(n < 2) return '';
+
+  const x = i => padL + (innerW * i) / (n - 1);
+  const y = v => padT + innerH * (1 - Math.max(0, Math.min(1, v || 0)));
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block;">`;
+
+  [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1].forEach(v => {
+    const yy = y(v);
+    svg += `<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="#EEF1F4" stroke-width="1"/>`;
+    svg += `<text x="${padL-8}" y="${yy+3}" text-anchor="end" font-size="9.5" fill="var(--ppt-gray)">${Math.round(v*100)}%</text>`;
+  });
+
+  for(let i=0;i<n;i++){
+    svg += `<text x="${x(i)}" y="${padT+innerH+16}" font-size="9" fill="var(--ppt-gray)" text-anchor="middle">${proj.week_labels[i]||''}</text>`;
+  }
+
+  const planVals = (proj.prog||[]).map((v,i)=>[i,v]).filter(([,v]) => v!==null && v!==undefined);
+  if(planVals.length){
+    svg += `<polyline points="${planVals.map(([i,v])=>`${x(i)},${y(v)}`).join(' ')}" fill="none" stroke="var(--ppt-chart-blue)" stroke-width="2.5"/>`;
+    planVals.forEach(([i,v]) => {
+      svg += `<circle cx="${x(i)}" cy="${y(v)}" r="2.3" fill="var(--ppt-chart-blue)"/>`;
+      svg += `<text x="${x(i)}" y="${y(v)-8}" font-size="9" font-weight="600" fill="var(--ppt-chart-blue)" text-anchor="middle">${Math.round(v*100)}%</text>`;
+    });
+  }
+
+  const realVals = (proj.real||[]).map((v,i)=>[i,v]).filter(([i,v]) => v!==null && v!==undefined && (cutIdx===null || i<=cutIdx));
+  if(realVals.length){
+    svg += `<polyline points="${realVals.map(([i,v])=>`${x(i)},${y(v)}`).join(' ')}" fill="none" stroke="var(--ppt-chart-orange)" stroke-width="2.5"/>`;
+    realVals.forEach(([i,v]) => {
+      svg += `<circle cx="${x(i)}" cy="${y(v)}" r="2.3" fill="var(--ppt-chart-orange)"/>`;
+      svg += `<text x="${x(i)}" y="${y(v)+14}" font-size="9" font-weight="600" fill="var(--ppt-chart-orange)" text-anchor="middle">${Math.round(v*100)}%</text>`;
+    });
+  }
+
+  svg += `</svg>`;
+  return svg;
+}
+
+function buildCurvaSPPT(proj){
+  const n = (proj.week_labels || []).length;
+  if(n < 2) return '<div class="ppt-empty">No hay datos suficientes de Curva S.</div>';
+
+  // % y avance mostrados: misma lógica que la pestaña "Curva S" > "Total"
+  // (computeProjectStats, atada a la fecha de corte global "selectedDate").
+  const stats = computeProjectStats(proj);
+  const cutIdx = stats.cutIdx;
+  const cutDate = (cutIdx !== null && cutIdx >= 0 && proj.week_dates[cutIdx]) ? new Date(proj.week_dates[cutIdx]) : null;
+
+  const planCut = stats.progCur;
+  const realCut = stats.realCur;
+  const desviacion = stats.diff !== null ? stats.diff * 100 : null;
+
+  const fmt1 = v => v.toFixed(1).replace('.', ',');
+  const cutLabel = cutDate ? fmtDateDash(cutDate) : stats.dateLabel;
+  const desvColor = desviacion === null ? 'var(--ppt-navy)' : (desviacion < 0 ? 'var(--ppt-red)' : 'var(--ppt-teal)');
+  const desvSign = (desviacion !== null && desviacion > 0) ? '+' : '';
+
+  const chartSvg = buildCurvaSChartSvgPPT(proj, (cutIdx!==null && cutIdx>=0) ? cutIdx : null, 720, 380);
+
+  // Filtro de fecha de corte (semana), igual que en la pestaña "Curva S" > "Total":
+  // comparte la misma variable global "selectedDate", así que cambiarlo aquí
+  // también actualiza esa pestaña y viceversa.
+  const {min: rangeMin, max: rangeMax} = overallDateRange();
+  const cutoffFilterHtml = (rangeMin && rangeMax) ? `
+      <div class="cutoff-block ppt-cutoff-block">
+        <label>Fecha de corte
+          <input type="date" id="pptCutoffInput" min="${toISODate(rangeMin)}" max="${toISODate(rangeMax)}" value="${selectedDate ? toISODate(selectedDate) : ''}">
+          <span id="pptCutoffDateDisplay" style="margin-left:10px; font-size:12px; color:var(--ink-dim);">${selectedDate ? fmtDate(selectedDate.toISOString()) : '—'}</span>
+        </label>
+        <div class="range">Rango disponible: ${fmtDate(rangeMin.toISOString())} — ${fmtDate(rangeMax.toISOString())}</div>
+      </div>` : '';
+
+  return `
+    <div class="ppt-card">
+      ${cutoffFilterHtml}
+      <div class="ppt-accent-line"></div>
+      <div class="ppt-chart-title">Curva S</div>
+      <div class="ppt-chart-legend">
+        <div class="ppt-legend-item"><span class="ppt-legend-swatch" style="background:var(--ppt-chart-blue);"></span> % Línea Base</div>
+        <div class="ppt-legend-item"><span class="ppt-legend-swatch" style="background:var(--ppt-chart-orange);"></span> % Real</div>
+      </div>
+      <div class="ppt-curva-layout">
+        <div class="ppt-stat-cards">
+          <div class="ppt-stat-card">
+            <div class="ppt-stat-label">Plan Acumulado</div>
+            <div class="ppt-stat-value" style="color:var(--ppt-navy);">${planCut!==null ? fmt1(planCut*100) : '—'}%</div>
+            <div class="ppt-stat-sub">Curva S al ${cutLabel}</div>
+          </div>
+          <div class="ppt-stat-card">
+            <div class="ppt-stat-label">Avance Real</div>
+            <div class="ppt-stat-value" style="color:var(--ppt-orange);">${realCut!==null ? fmt1(realCut*100) : '—'}%</div>
+            <div class="ppt-stat-sub">Avance real al ${cutLabel}</div>
+          </div>
+          <div class="ppt-stat-card">
+            <div class="ppt-stat-label">Desviación</div>
+            <div class="ppt-stat-value" style="color:${desvColor};">${desviacion!==null ? desvSign+fmt1(desviacion) : '—'}${desviacion!==null ? ' %' : ''}</div>
+            <div class="ppt-stat-sub">Real vs plan</div>
+          </div>
+        </div>
+        <div class="ppt-chart-col">
+          ${chartSvg}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderParaPPT(){
+  const empty = document.getElementById('pptEmpty');
+  const content = document.getElementById('pptContent');
+  const hasProjects = PROJECTS && PROJECTS.length > 0;
+
+  if(empty) empty.style.display = hasProjects ? 'none' : 'block';
+  if(content) content.style.display = hasProjects ? 'block' : 'none';
+  if(!hasProjects) return;
+
+  const proj = PROJECTS[selectedProjectIdx !== null ? selectedProjectIdx : 0] || PROJECTS[0];
+  if(!proj) return;
+
+  try {
+    const ganttBody = document.getElementById('pptGanttBody');
+    if(ganttBody) ganttBody.innerHTML = buildGanttPPT(proj);
+
+    const curvaBody = document.getElementById('pptCurvaBody');
+    if(curvaBody) curvaBody.innerHTML = buildCurvaSPPT(proj);
+
+    // El filtro de fecha de corte se reconstruye en cada render (innerHTML nuevo),
+    // así que hay que volver a enlazar su evento cada vez.
+    const pptCutoffInput = document.getElementById('pptCutoffInput');
+    if(pptCutoffInput){
+      pptCutoffInput.addEventListener('change', e => {
+        const isoValue = e.target.value;
+        if(isoValue){
+          selectedDate = parseISODateOnly(isoValue);
+        }
+        // Mantener sincronizado el selector de fecha de corte de la pestaña
+        // "Curva S" (son la misma variable global "selectedDate").
+        const mainCutoffInput = document.getElementById('cutoffInput');
+        if(mainCutoffInput){
+          mainCutoffInput.value = isoValue;
+          if(typeof updateCutoffDateDisplay === 'function') updateCutoffDateDisplay();
+        }
+        render();
+      });
+    }
+  } catch(e) {
+    console.log('Error renderizando Para PPT:', e);
+  }
+}
+
 function renderEntregables(){
   const empty = document.getElementById('entregablesEmpty');
   const content = document.getElementById('entregablesContent');
@@ -3622,6 +4138,57 @@ function renderEntregables(){
   }
 }
 
+// Detalle al hacer clic en una celda de "Entregables por Semana y Proyecto":
+// muestra la lista de entregables programados en esa semana (y, si aplica, nivel).
+function showEntregableDetailModal(week, nivel){
+  const key = nivel === '__TOTAL__' ? `${week}___TOTAL__` : `${week}_${nivel}`;
+  const items = entregablesCellDeliverables[key] || [];
+  const modal = document.getElementById('entregableDetailModal');
+  const titleEl = document.getElementById('entregableDetailTitle');
+  const bodyEl = document.getElementById('entregableDetailBody');
+  if(!modal || !titleEl || !bodyEl) return;
+
+  titleEl.textContent = nivel === '__TOTAL__'
+    ? `Entregables de la semana ${week}`
+    : `${nivel} — semana ${week}`;
+
+  if(!items.length){
+    bodyEl.innerHTML = '<div style="padding:16px 0; text-align:center; color:var(--ink-faint);">No hay entregables en esta celda.</div>';
+  } else {
+    bodyEl.innerHTML = items.map(d => {
+      const finLabel = d.fin ? fmtDateDM(d.fin) : '—';
+      const pctLabel = (d.pctReal !== undefined && d.pctReal !== null && d.pctReal !== '') ? `${d.pctReal}%` : '—';
+      return `
+        <div class="entregable-modal-item">
+          <div class="entregable-modal-item-title">${d.actividad || '—'}</div>
+          <div class="entregable-modal-item-meta">
+            <span>WBS: ${d.wbs || '—'}</span>
+            <span>Fin: ${finLabel}</span>
+            <span>% Real: ${pctLabel}</span>
+            <span>Responsable: ${d.responsable || '—'}</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function closeEntregableDetailModal(){
+  const modal = document.getElementById('entregableDetailModal');
+  if(modal) modal.classList.add('hidden');
+}
+
+document.addEventListener('click', e => {
+  const cell = e.target.closest('.entregable-cell');
+  if(cell){
+    showEntregableDetailModal(cell.dataset.week, cell.dataset.nivel);
+    return;
+  }
+  if(e.target.id === 'entregableDetailCloseBtn' || e.target.id === 'entregableDetailModal'){
+    closeEntregableDetailModal();
+  }
+});
 
 function renderResponsables(){
   const empty = document.getElementById('responsablesEmpty');
@@ -3722,6 +4289,210 @@ function safeRender(){
 }
 
 
+// Devuelve una copia superficial de "proj" con ganttRows/pptGanttSource
+// filtrados a solo las actividades cuyo rango Inicio-Fin se solapa con
+// [from, to] (cualquiera de los dos puede ser null = sin límite en ese lado).
+function filterProjByDateRange(proj, from, to){
+  if(!from && !to) return proj;
+  const fromT = from ? from.getTime() : -Infinity;
+  const toT = to ? to.getTime() : Infinity;
+  const overlaps = (iniRaw, finRaw) => {
+    if(!iniRaw || !finRaw) return false;
+    const ini = new Date(iniRaw).getTime();
+    const fin = new Date(finRaw).getTime();
+    if(isNaN(ini) || isNaN(fin)) return false;
+    return fin >= fromT && ini <= toT;
+  };
+  return Object.assign({}, proj, {
+    ganttRows: (proj.ganttRows || []).filter(r => overlaps(r.inicio, r.fin)),
+    pptGanttSource: (proj.pptGanttSource || []).filter(r => overlaps(r.inicio, r.fin)),
+  });
+}
+
+// ============ Línea de tiempo (filtro de fechas del Gantt) ============
+// Barra deslizante tipo "Insertar escala de tiempo" de Excel: calcula el
+// rango completo de fechas del proyecto (sin aplicar el filtro), dibuja
+// marcas mensuales de referencia, y posiciona las dos manijas según el
+// filtro actual (ganttFilterFrom/ganttFilterTo). El arrastre de las
+// manijas se maneja aparte, en wireGanttTimelineDrag() (una sola vez).
+let ganttTimelineRangeMin = null;
+let ganttTimelineRangeMax = null;
+
+function renderGanttTimelineSlider(proj){
+  const block = document.getElementById('ganttTimelineBlock');
+  const ticksEl = document.getElementById('ganttTimelineTicks');
+  if(!block || !ticksEl) return;
+
+  const rows = proj.ganttRows || [];
+  const times = rows.flatMap(r => [r.inicio, r.fin]).filter(Boolean).map(d => new Date(d).getTime()).filter(t => !isNaN(t));
+  if(!times.length){
+    block.style.display = 'none';
+    ganttTimelineRangeMin = null;
+    ganttTimelineRangeMax = null;
+    return;
+  }
+  block.style.display = 'block';
+
+  const min = Math.min(...times);
+  const max = Math.max(...times);
+  ganttTimelineRangeMin = min;
+  ganttTimelineRangeMax = max;
+
+  // Marcas semanales a lo largo de la barra (cada 7 días desde el inicio del
+  // rango), como referencia visual — mismo criterio que las fechas del eje
+  // del propio diagrama de Gantt (ej. "07/sep", "13/sep", ...).
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const span = (max - min) || 1;
+  const daysDiff = Math.ceil(span / (1000 * 60 * 60 * 24));
+  const numWeeks = Math.ceil(daysDiff / 7) + 1;
+  const ticksFrag = [];
+  for(let i = 0; i < numWeeks; i++){
+    const tickDate = new Date(min);
+    tickDate.setDate(tickDate.getDate() + i * 7);
+    const t = tickDate.getTime();
+    if(t > max) break;
+    const pct = ((t - min) / span) * 100;
+    if(pct < 0 || pct > 100) continue;
+    const day = String(tickDate.getDate()).padStart(2, '0');
+    const month = meses[tickDate.getMonth()];
+    ticksFrag.push(`<div class="gantt-timeline-tick" style="left:${pct}%;"><span class="gantt-timeline-tick-label">${day}/${month}</span></div>`);
+  }
+  ticksEl.innerHTML = ticksFrag.join('');
+
+  updateGanttTimelineHandles();
+}
+
+// Reposiciona las manijas/selección/etiqueta según ganttFilterFrom/ganttFilterTo
+// (sin reconstruir las marcas de mes) — se llama en cada render y durante el
+// arrastre para dar retroalimentación visual inmediata.
+function updateGanttTimelineHandles(){
+  const min = ganttTimelineRangeMin, max = ganttTimelineRangeMax;
+  const selection = document.getElementById('ganttTimelineSelection');
+  const handleStart = document.getElementById('ganttTimelineHandleStart');
+  const handleEnd = document.getElementById('ganttTimelineHandleEnd');
+  const label = document.getElementById('ganttTimelineRangeLabel');
+  if(min === null || max === null || !selection || !handleStart || !handleEnd) return;
+
+  const span = (max - min) || 1;
+  const fromT = ganttFilterFrom ? Math.max(min, Math.min(max, ganttFilterFrom.getTime())) : min;
+  const toT = ganttFilterTo ? Math.max(min, Math.min(max, ganttFilterTo.getTime())) : max;
+  const pctStart = ((fromT - min) / span) * 100;
+  const pctEnd = ((toT - min) / span) * 100;
+
+  handleStart.style.left = pctStart + '%';
+  handleEnd.style.left = pctEnd + '%';
+  selection.style.left = pctStart + '%';
+  selection.style.width = Math.max(0, pctEnd - pctStart) + '%';
+
+  if(label){
+    label.textContent = (ganttFilterFrom || ganttFilterTo)
+      ? `${fmtDateDash(new Date(fromT))} — ${fmtDateDash(new Date(toT))}`
+      : `${fmtDateDash(new Date(min))} — ${fmtDateDash(new Date(max))} (todo el rango)`;
+  }
+}
+
+// Arrastre de las manijas y de la barra de selección (arrastrar entre las dos
+// manijas mueve el rango completo, sin cambiar su ancho). Se enlaza una sola
+// vez porque los elementos del slider son estáticos (no se regeneran con
+// innerHTML en cada render).
+function wireGanttTimelineDrag(){
+  const track = document.getElementById('ganttTimelineTrack');
+  const handleStart = document.getElementById('ganttTimelineHandleStart');
+  const handleEnd = document.getElementById('ganttTimelineHandleEnd');
+  const selection = document.getElementById('ganttTimelineSelection');
+  const clearBtn = document.getElementById('ganttTimelineClearBtn');
+  if(!track || !handleStart || !handleEnd || !selection) return;
+
+  const pctFromClientX = (clientX) => {
+    const rect = track.getBoundingClientRect();
+    if(!rect.width) return 0;
+    return Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+  };
+  const dateFromPct = (pct) => {
+    const min = ganttTimelineRangeMin, max = ganttTimelineRangeMax;
+    if(min === null || max === null) return null;
+    return new Date(min + ((max - min) * pct) / 100);
+  };
+  const pctOf = (t) => {
+    const min = ganttTimelineRangeMin, max = ganttTimelineRangeMax;
+    return ((t - min) / ((max - min) || 1)) * 100;
+  };
+
+  let dragMode = null; // 'start' | 'end' | 'pan'
+  let panStartPct = 0, panStartFromPct = 0, panStartToPct = 0;
+
+  const onPointerMove = (e) => {
+    if(!dragMode || ganttTimelineRangeMin === null) return;
+    const pct = pctFromClientX(e.clientX);
+    if(dragMode === 'start'){
+      const curToT = ganttFilterTo ? ganttFilterTo.getTime() : ganttTimelineRangeMax;
+      const clamped = Math.min(pct, pctOf(curToT));
+      ganttFilterFrom = dateFromPct(clamped);
+    } else if(dragMode === 'end'){
+      const curFromT = ganttFilterFrom ? ganttFilterFrom.getTime() : ganttTimelineRangeMin;
+      const clamped = Math.max(pct, pctOf(curFromT));
+      ganttFilterTo = dateFromPct(clamped);
+    } else if(dragMode === 'pan'){
+      const deltaPct = pct - panStartPct;
+      const width = panStartToPct - panStartFromPct;
+      let newFromPct = panStartFromPct + deltaPct;
+      let newToPct = panStartToPct + deltaPct;
+      if(newFromPct < 0){ newFromPct = 0; newToPct = width; }
+      if(newToPct > 100){ newToPct = 100; newFromPct = 100 - width; }
+      ganttFilterFrom = dateFromPct(newFromPct);
+      ganttFilterTo = dateFromPct(newToPct);
+    }
+    updateGanttTimelineHandles();
+  };
+
+  const onPointerUp = () => {
+    if(!dragMode) return;
+    dragMode = null;
+    handleStart.classList.remove('dragging');
+    handleEnd.classList.remove('dragging');
+    document.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerUp);
+    renderGanttPage();
+  };
+
+  handleStart.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    dragMode = 'start';
+    handleStart.classList.add('dragging');
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  });
+  handleEnd.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    dragMode = 'end';
+    handleEnd.classList.add('dragging');
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  });
+  selection.addEventListener('pointerdown', e => {
+    if(ganttTimelineRangeMin === null) return;
+    e.preventDefault();
+    dragMode = 'pan';
+    const fromT = ganttFilterFrom ? ganttFilterFrom.getTime() : ganttTimelineRangeMin;
+    const toT = ganttFilterTo ? ganttFilterTo.getTime() : ganttTimelineRangeMax;
+    panStartFromPct = pctOf(fromT);
+    panStartToPct = pctOf(toT);
+    panStartPct = pctFromClientX(e.clientX);
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  });
+
+  if(clearBtn){
+    clearBtn.addEventListener('click', () => {
+      ganttFilterFrom = null;
+      ganttFilterTo = null;
+      updateGanttTimelineHandles();
+      renderGanttPage();
+    });
+  }
+}
+wireGanttTimelineDrag();
+
 function renderGanttPage(){
   const empty = document.getElementById('ganttEmpty');
   const content = document.getElementById('ganttContent');
@@ -3733,11 +4504,14 @@ function renderGanttPage(){
   // Seleccionar primer proyecto automáticamente
   if(selectedProjectIdx === null && PROJECTS.length > 0) selectedProjectIdx = 0;
 
-  const proj = PROJECTS[selectedProjectIdx];
-  if(!proj) {
+  const rawProj = PROJECTS[selectedProjectIdx];
+  if(!rawProj) {
     console.error('No hay proyecto seleccionado.');
     return;
   }
+
+  renderGanttTimelineSlider(rawProj);
+  const proj = filterProjByDateRange(rawProj, ganttFilterFrom, ganttFilterTo);
 
   try {
     const ganttBody = document.getElementById('ganttMainBody');
@@ -3745,11 +4519,21 @@ function renderGanttPage(){
       console.error('❌ Elemento ganttMainBody no encontrado en el DOM');
       return;
     }
-    const ganttHtml = buildGanttChart(proj);
+    const ganttHtml = (proj.ganttRows || []).length
+      ? buildGanttChart(proj)
+      : '<div class="gantt-empty">No hay actividades en el rango de fechas seleccionado.</div>';
     console.log('Rendering Gantt for project:', proj.name);
     ganttBody.innerHTML = ganttHtml;
     // Inicializar resize de columnas después de renderizar
     setTimeout(() => initColumnResizing(), 50);
+
+    // Pestaña "Diseño nuevo": mismo diseño de "Para PPT > Diagrama de Gantt",
+    // pero con todas las actividades y sin la fila de pills de abajo.
+    const ganttNewBody = document.getElementById('ganttNewBody');
+    if(ganttNewBody){
+      ganttNewBody.innerHTML = buildGanttFullPPT(proj);
+      wireGanttTopScroll('ganttNewBody');
+    }
   } catch(e) {
     console.error('❌ Error rendering Gantt:', e);
   }
@@ -3759,6 +4543,7 @@ function render(){
   document.getElementById('navProjCount').textContent = PROJECTS.length;
   document.getElementById('navFileCount').textContent = PROJECTS.length;
   document.getElementById('navGanttCount').textContent = PROJECTS.length;
+  if(document.getElementById('navParaPptCount')) document.getElementById('navParaPptCount').textContent = PROJECTS.length;
 
   const filebar = document.getElementById('filebar');
   filebar.innerHTML = PROJECTS.map(p => `<span class="chip">${p.file}</span>`).join('');
@@ -3791,7 +4576,7 @@ function render(){
   renderGanttPage();
   renderResponsables();
   renderEntregables();
-  renderProrrateo();
+  renderParaPPT();
   updateHeader();
 }
 
@@ -3842,6 +4627,11 @@ document.getElementById('cutoffInput').addEventListener('change', e => {
 document.getElementById('cutoffInput').addEventListener('input', () => {
   updateCutoffDateDisplay();
 });
+
+// El filtro de rango de fechas de la ventana "Diagrama de Gantt" ahora es la
+// línea de tiempo deslizante (ver renderGanttTimelineSlider/wireGanttTimelineDrag
+// más arriba), que filtra todas las actividades de ambas pestañas ("Diseño
+// clásico" y "Diseño nuevo") según el rango arrastrado.
 
 /* ================= File handling ================= */
 
@@ -3945,432 +4735,6 @@ dropzone.addEventListener('drop', e => {
 document.addEventListener('mousemove', handleMouseMove);
 document.addEventListener('mouseup', handleMouseUp);
 
-/* ================= PRORRATEO DASHBOARD ================= */
-let prorrateoAllActivities = [];
-let prorrateoFilesLoaded = 0;
-let prorrateoFilesImported = [];
-let prorrateoCurrentCodFilter = new Set();
-let prorrateoCharts = {};
-let prorrateoSortState = {};
-
-const prorrateoDropzone = document.getElementById('prorrateoDropzone');
-const prorrateoFileInput = document.getElementById('prorrateoFileInput');
-const prorrateoMessages = document.getElementById('prorrateoMessages');
-const prorrateoFilesLoadedDiv = document.getElementById('prorrateoFilesLoaded');
-const prorrateoContent_Table = document.getElementById('prorrateoContent_Table');
-const prorrateoContentDias = document.getElementById('prorrateoContentDias');
-const prorrateoContentResp = document.getElementById('prorrateoContentResp');
-
-if(prorrateoDropzone) {
-  prorrateoDropzone.addEventListener('click', () => prorrateoFileInput.click());
-  prorrateoDropzone.addEventListener('dragover', e => { e.preventDefault(); prorrateoDropzone.style.background = '#e3f2fd'; });
-  prorrateoDropzone.addEventListener('dragleave', () => { prorrateoDropzone.style.background = '#fafafa'; });
-  prorrateoDropzone.addEventListener('drop', e => { e.preventDefault(); prorrateoDropzone.style.background = '#fafafa'; prorrateoHandleFiles(e.dataTransfer.files); });
-}
-if(prorrateoFileInput) {
-  prorrateoFileInput.addEventListener('change', e => prorrateoHandleFiles(e.target.files));
-}
-
-function switchProrrateoTab(tabName) {
-  // Ocultar todos los tabs
-  document.querySelectorAll('#prorrateoContent .tab-content').forEach(el => el.style.display = 'none');
-  // Desactivar todos los botones
-  document.querySelectorAll('#prorrateoContent .tab-btn').forEach(el => el.classList.remove('active'));
-  // Mostrar tab seleccionado
-  const tab = document.getElementById(tabName);
-  if(tab) {
-    tab.style.display = 'block';
-    // Darle tiempo para que se pinte antes de hacerlo visible
-    setTimeout(() => tab.style.visibility = 'visible', 10);
-  }
-  // Activar botón
-  if(event && event.target) {
-    event.target.classList.add('active');
-  }
-}
-
-function prorrateoShowMessage(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  div.className = text.includes('Cargados') ? 'info' : (text.includes('Error') ? 'error' : 'info');
-  prorrateoMessages.innerHTML = '';
-  prorrateoMessages.appendChild(div);
-}
-
-function prorrateoFormatDate(date) {
-  if(!date) return '';
-  if(typeof date === 'number' && date > 0) {
-    try {
-      const d = new Date((date - 25569) * 86400 * 1000);
-      const day = String(d.getDate()).padStart(2, '0');
-      const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-      return day + '/' + months[d.getMonth()];
-    } catch(e) { return ''; }
-  }
-  if(typeof date === 'string') {
-    try {
-      const d = new Date(date);
-      const day = String(d.getDate()).padStart(2, '0');
-      const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-      return day + '/' + months[d.getMonth()];
-    } catch(e) { return ''; }
-  }
-  return '';
-}
-
-function prorrateoGetDateString(date) {
-  if(!date) return null;
-  if(typeof date === 'number' && date > 0) {
-    try {
-      const d = new Date((date - 25569) * 86400 * 1000);
-      if(isNaN(d.getTime())) return null;
-      return d.toISOString().split('T')[0];
-    } catch(e) { return null; }
-  }
-  if(typeof date === 'string') {
-    try {
-      const d = new Date(date);
-      if(isNaN(d.getTime())) return null;
-      return d.toISOString().split('T')[0];
-    } catch(e) { return null; }
-  }
-  return null;
-}
-
-function prorrateoGetNivelColor(nivel) {
-  if(!nivel) return '#ffffff';
-  const nivelStr = String(nivel).toLowerCase();
-  if(nivelStr.includes('etapa 1') || nivelStr === '1') return '#ffb366';
-  if(nivelStr.includes('etapa 2') || nivelStr === '2') return '#66b3ff';
-  if(nivelStr.includes('etapa 3') || nivelStr === '3') return '#cc99ff';
-  if(nivelStr.includes('etapa 4') || nivelStr === '4') return '#99ff99';
-  return '#ffffff';
-}
-
-function prorrateoMakeTableSortable(tableElement, tableType) {
-  if(!tableElement || !tableElement.querySelector('thead')) return;
-  const headers = tableElement.querySelectorAll('th');
-  headers.forEach((header, idx) => {
-    header.style.cursor = 'pointer';
-    header.addEventListener('click', () => {
-      const col = header.textContent.trim().replace(' asc', '').replace(' desc', '');
-      if(!prorrateoSortState[tableType]) prorrateoSortState[tableType] = {};
-      if(prorrateoSortState[tableType].col === col) {
-        prorrateoSortState[tableType].asc = !prorrateoSortState[tableType].asc;
-      } else {
-        prorrateoSortState[tableType].col = col;
-        prorrateoSortState[tableType].asc = true;
-      }
-      const rows = Array.from(tableElement.querySelectorAll('tbody tr'));
-      rows.sort((a, b) => {
-        const aVal = a.children[idx] ? a.children[idx].textContent.trim() : '';
-        const bVal = b.children[idx] ? b.children[idx].textContent.trim() : '';
-        const aNum = parseFloat(aVal.replace('%', ''));
-        const bNum = parseFloat(bVal.replace('%', ''));
-        const isNum = !isNaN(aNum) && !isNaN(bNum);
-        const cmp = isNum ? aNum - bNum : aVal.localeCompare(bVal);
-        return prorrateoSortState[tableType].asc ? cmp : -cmp;
-      });
-      const tbody = tableElement.querySelector('tbody');
-      rows.forEach(row => tbody.appendChild(row));
-      headers.forEach(h => { h.textContent = h.textContent.replace(' asc', '').replace(' desc', ''); });
-      header.textContent = col + (prorrateoSortState[tableType].asc ? ' asc' : ' desc');
-    });
-  });
-}
-
-function prorrateoHandleFiles(files) {
-  if(!files.length) return;
-  prorrateoFilesLoaded = 0;
-  prorrateoFilesImported = [];
-  Array.from(files).forEach((file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const wsGantt = workbook.Sheets['Gantt'];
-        if(!wsGantt) { prorrateoFilesLoaded++; prorrateoFinishLoading(files.length); return; }
-        prorrateoFilesImported.push(file.name);
-        for(let r = 9; r <= 300; r++) {
-          const cod = wsGantt['B' + r]?.v;
-          if(!cod) break;
-          const activity = {
-            cod: cod,
-            nivel: wsGantt['C' + r]?.v,
-            wbs: wsGantt['D' + r]?.v,
-            actividad: wsGantt['E' + r]?.v || '',
-            tipo: wsGantt['F' + r]?.v,
-            inicio: wsGantt['G' + r]?.v,
-            fin: wsGantt['H' + r]?.v,
-            responsable: wsGantt['J' + r]?.v,
-            hhTotal: wsGantt['L' + r]?.v || 0,
-            estado: wsGantt['N' + r]?.v,
-            pctOri: wsGantt['P' + r]?.v,
-            pctReal: wsGantt['V' + r]?.v,
-            pctDif: wsGantt['R' + r]?.v
-          };
-          if(activity.actividad) prorrateoAllActivities.push(activity);
-        }
-        prorrateoFilesLoaded++;
-        prorrateoFinishLoading(files.length);
-      } catch(err) {
-        prorrateoShowMessage('Error: ' + err.message);
-        prorrateoFilesLoaded++;
-        prorrateoFinishLoading(files.length);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-function prorrateoFinishLoading(totalFiles) {
-  if(prorrateoFilesLoaded !== totalFiles) return;
-  if(!prorrateoAllActivities.length) { prorrateoShowMessage('No se encontraron actividades'); return; }
-  
-  prorrateoFilesLoadedDiv.innerHTML = '<div class="files-list"><h3>Archivos importados:</h3><ul>' + prorrateoFilesImported.map(f => '<li>' + f + '</li>').join('') + '</ul></div>';
-  prorrateoFilesLoadedDiv.style.display = 'block';
-  
-  const responsables = [...new Set(prorrateoAllActivities.map(a => a.responsable).filter(r => r && r !== '-'))].sort();
-  ['prorrateoResponsableFilterDashboard', 'prorrateoResponsableFilterDetalle', 'prorrateoResponsableFilter', 'prorrateoResponsableFilterResp'].forEach(id => {
-    const select = document.getElementById(id);
-    select.innerHTML = '<option value="">Todos</option>';
-    responsables.forEach(resp => {
-      const opt = document.createElement('option');
-      opt.value = resp;
-      opt.textContent = resp;
-      select.appendChild(opt);
-    });
-  });
-  
-  const cods = [...new Set(prorrateoAllActivities.map(a => a.cod).filter(c => c && c !== '-'))].sort();
-  ['prorrateoCodeFilterContainerDashboard', 'prorrateoCodeFilterContainerDetalle', 'prorrateoCodeFilterContainer', 'prorrateoCodeFilterContainerResp'].forEach(id => {
-    const container = document.getElementById(id);
-    container.innerHTML = '';
-    cods.forEach(cod => {
-      const btn = document.createElement('button');
-      btn.className = 'cod-btn';
-      btn.textContent = cod;
-      btn.onclick = () => {
-        if(prorrateoCurrentCodFilter.has(cod)) { prorrateoCurrentCodFilter.delete(cod); btn.classList.remove('active'); }
-        else { prorrateoCurrentCodFilter.add(cod); btn.classList.add('active'); }
-        prorrateoApplyFiltersDetalle();
-        prorrateoApplyFilters();
-        prorrateoApplyFiltersResp();
-        prorrateoRenderCharts();
-      };
-      container.appendChild(btn);
-    });
-  });
-  
-  document.getElementById('prorrateoFiltersDashboard').style.display = 'block';
-  document.getElementById('prorrateoFiltersDetalle').style.display = 'block';
-  document.getElementById('prorrateoFiltersSection').style.display = 'block';
-  document.getElementById('prorrateoFiltersSectionResp').style.display = 'block';
-  document.getElementById('prorrateoChartsContainer').style.display = 'block';
-  document.getElementById('prorrateoContent').style.display = 'block';
-  
-  prorrateoRenderTable(prorrateoAllActivities);
-  prorrateoApplyFilters();
-  prorrateoRenderCharts();
-  prorrateoShowMessage('Cargados: ' + prorrateoAllActivities.length + ' actividades de ' + prorrateoFilesImported.length + ' archivo(s)');
-}
-
-function prorrateoDesfiltrar(tab) {
-  prorrateoCurrentCodFilter.clear();
-  document.querySelectorAll('#prorrateoContent .cod-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('prorrateoResponsableFilterDashboard').value = '';
-  document.getElementById('prorrateoResponsableFilterDetalle').value = '';
-  document.getElementById('prorrateoResponsableFilter').value = '';
-  document.getElementById('prorrateoResponsableFilterResp').value = '';
-  if(tab === 'detalle') prorrateoApplyFiltersDetalle();
-  else if(tab === 'hhdia') prorrateoApplyFilters();
-  else if(tab === 'hhresp') prorrateoApplyFiltersResp();
-  else if(tab === 'dashboard') prorrateoRenderCharts();
-}
-
-function prorrateoApplyFiltersDetalle() {
-  const resp = document.getElementById('prorrateoResponsableFilterDetalle').value;
-  let filtered = prorrateoAllActivities;
-  if(resp) filtered = filtered.filter(a => a.responsable === resp);
-  if(prorrateoCurrentCodFilter.size > 0) filtered = filtered.filter(a => prorrateoCurrentCodFilter.has(a.cod));
-  prorrateoRenderTable(filtered);
-}
-
-function prorrateoApplyFilters() {
-  const resp = document.getElementById('prorrateoResponsableFilter').value;
-  let datos = [];
-  let dates = new Set();
-  prorrateoAllActivities.forEach(a => {
-    if(!a.responsable || !a.inicio || a.hhTotal <= 0) return;
-    if(resp && a.responsable !== resp) return;
-    if(prorrateoCurrentCodFilter.size > 0 && !prorrateoCurrentCodFilter.has(a.cod)) return;
-    const dateStr = prorrateoGetDateString(a.inicio);
-    if(!dateStr) return;
-    dates.add(dateStr);
-    const key = a.cod + '|' + a.responsable;
-    let row = datos.find(d => d.key === key);
-    if(!row) { row = { key: key, cod: a.cod, responsable: a.responsable, horas: {} }; datos.push(row); }
-    row.horas[dateStr] = (row.horas[dateStr] || 0) + a.hhTotal;
-  });
-  if(!datos.length) { prorrateoContentDias.innerHTML = '<div style="padding:20px; color:#999;">Sin datos</div>'; return; }
-  const sortedDates = Array.from(dates).sort();
-  let html = '<table><thead><tr><th class="sticky-col" style="left:0;">Codigo</th><th class="sticky-col" style="left:100px;">Responsable</th>';
-  sortedDates.forEach(d => {
-    const fecha = new Date(d);
-    const dia = String(fecha.getDate()).padStart(2, '0');
-    const mes = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][fecha.getMonth()];
-    html += '<th class="text-center">' + dia + '/' + mes + '</th>';
-  });
-  html += '<th class="text-center">Total</th></tr></thead><tbody>';
-  datos.sort((a, b) => a.cod.localeCompare(b.cod) || a.responsable.localeCompare(b.responsable));
-  const totales = {};
-  sortedDates.forEach(d => totales[d] = 0);
-  datos.forEach(row => {
-    let rowTotal = 0;
-    html += '<tr><td class="sticky-col" style="left:0;">' + row.cod + '</td><td class="sticky-col" style="left:100px;">' + row.responsable + '</td>';
-    sortedDates.forEach(d => {
-      const hh = row.horas[d] || 0;
-      rowTotal += hh;
-      totales[d] += hh;
-      html += '<td class="text-center">' + (hh > 0 ? Math.round(hh) : '-') + '</td>';
-    });
-    html += '<td class="text-center">' + Math.round(rowTotal) + '</td></tr>';
-  });
-  let totalGral = 0;
-  html += '<tr class="total-row"><td class="sticky-col" style="left:0;">TOTAL</td><td class="sticky-col" style="left:100px;"></td>';
-  sortedDates.forEach(d => {
-    const tot = totales[d];
-    totalGral += tot;
-    html += '<td class="text-center">' + Math.round(tot) + '</td>';
-  });
-  html += '<td class="text-center">' + Math.round(totalGral) + '</td></tr></tbody></table>';
-  prorrateoContentDias.innerHTML = html;
-  prorrateoMakeTableSortable(prorrateoContentDias.querySelector('table'), 'hhdia');
-}
-
-function prorrateoApplyFiltersResp() {
-  const resp = document.getElementById('prorrateoResponsableFilterResp').value;
-  let datos = {};
-  let allDates = new Set();
-  prorrateoAllActivities.forEach(a => {
-    if(!a.responsable || !a.inicio || a.hhTotal <= 0) return;
-    if(resp && a.responsable !== resp) return;
-    if(prorrateoCurrentCodFilter.size > 0 && !prorrateoCurrentCodFilter.has(a.cod)) return;
-    const dateStr = prorrateoGetDateString(a.inicio);
-    if(!dateStr) return;
-    allDates.add(dateStr);
-    const r = a.responsable;
-    if(!datos[r]) datos[r] = {};
-    if(!datos[r][a.cod]) datos[r][a.cod] = {};
-    datos[r][a.cod][dateStr] = (datos[r][a.cod][dateStr] || 0) + a.hhTotal;
-  });
-  if(!Object.keys(datos).length) { prorrateoContentResp.innerHTML = '<div style="padding:20px; color:#999;">Sin datos</div>'; return; }
-  const sortedDates = Array.from(allDates).sort();
-  let html = '';
-  Object.keys(datos).sort().forEach(r => {
-    html += '<div style="margin-bottom: 30px;"><h4 style="background: #c41e3a; color: white; padding: 10px; border-radius: 4px; margin-bottom: 10px;">Responsable: ' + r + '</h4>';
-    html += '<table><thead><tr><th class="sticky-col" style="left:0;">Codigo</th>';
-    sortedDates.forEach(d => {
-      const fecha = new Date(d);
-      const dia = String(fecha.getDate()).padStart(2, '0');
-      const mes = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][fecha.getMonth()];
-      html += '<th class="text-center">' + dia + '/' + mes + '</th>';
-    });
-    html += '<th class="text-center">Total</th></tr></thead><tbody>';
-    const totales = {};
-    sortedDates.forEach(d => totales[d] = 0);
-    Object.keys(datos[r]).sort().forEach(cod => {
-      let rowTotal = 0;
-      html += '<tr><td class="sticky-col" style="left:0;">' + cod + '</td>';
-      sortedDates.forEach(d => {
-        const hh = datos[r][cod][d] || 0;
-        rowTotal += hh;
-        totales[d] += hh;
-        html += '<td class="text-center">' + (hh > 0 ? Math.round(hh) : '-') + '</td>';
-      });
-      html += '<td class="text-center">' + Math.round(rowTotal) + '</td></tr>';
-    });
-    let totalGral = 0;
-    html += '<tr class="total-row"><td class="sticky-col" style="left:0;">TOTAL</td>';
-    sortedDates.forEach(d => {
-      const tot = totales[d];
-      totalGral += tot;
-      html += '<td class="text-center">' + Math.round(tot) + '</td>';
-    });
-    html += '<td class="text-center">' + Math.round(totalGral) + '</td></tr></tbody></table></div>';
-  });
-  prorrateoContentResp.innerHTML = html;
-  prorrateoContentResp.querySelectorAll('table').forEach((table, idx) => prorrateoMakeTableSortable(table, 'hhresp_' + idx));
-}
-
-function prorrateoRenderTable(activities) {
-  const totalHH = activities.reduce((s, a) => s + (typeof a.hhTotal === 'number' ? a.hhTotal : 0), 0);
-  document.getElementById('prorrateoStats').innerHTML = '<div class="stat-box"><div class="stat-number">' + activities.length + '</div><div class="stat-label">Actividades</div></div><div class="stat-box"><div class="stat-number">' + Math.round(totalHH) + '</div><div class="stat-label">Total HH</div></div><div class="stat-box"><div class="stat-number">' + (activities.length > 0 ? Math.round(totalHH / activities.length) : 0) + '</div><div class="stat-label">Promedio HH/Act</div></div>';
-  document.getElementById('prorrateoStats').style.display = 'grid';
-  let html = '<table><thead><tr><th>Nivel</th><th>WBS</th><th>Actividad</th><th>Tipo</th><th>Inicio</th><th>Fin</th><th class="text-right">HH</th><th>Responsable</th><th>Estado</th><th class="text-center">%Prog</th><th class="text-center">%Real</th><th class="text-center">%Dif</th></tr></thead><tbody>';
-  activities.forEach(a => {
-    const inicio = prorrateoFormatDate(a.inicio);
-    const fin = prorrateoFormatDate(a.fin);
-    const nivelColor = prorrateoGetNivelColor(a.nivel);
-    html += '<tr><td>' + a.cod + '</td><td style="background-color:' + nivelColor + ';">' + (a.nivel || '-') + '</td><td>' + (a.wbs || '-') + '</td><td>' + a.actividad + '</td><td>' + (a.tipo || '-') + '</td><td>' + inicio + '</td><td>' + fin + '</td><td class="text-right">' + (typeof a.hhTotal === 'number' ? Math.round(a.hhTotal) : '-') + '</td><td>' + (a.responsable || '-') + '</td><td>' + (a.estado || '-') + '</td><td class="text-center">' + (typeof a.pctOri === 'number' ? Math.round(a.pctOri * 100) + '%' : (a.pctOri || '-')) + '</td><td class="text-center">' + (typeof a.pctReal === 'number' ? Math.round(a.pctReal * 100) + '%' : (a.pctReal || '-')) + '</td><td class="text-center">' + (typeof a.pctDif === 'number' ? Math.round(a.pctDif * 100) + '%' : (a.pctDif || '-')) + '</td></tr>';
-  });
-  html += '</tbody></table>';
-  prorrateoContent_Table.innerHTML = html;
-  prorrateoMakeTableSortable(prorrateoContent_Table.querySelector('table'), 'detalle');
-}
-
-function prorrateoRenderCharts() {
-  if(!prorrateoAllActivities.length) return;
-  const resp = document.getElementById('prorrateoResponsableFilterDashboard').value;
-  let filtered = prorrateoAllActivities;
-  if(resp) filtered = filtered.filter(a => a.responsable === resp);
-  if(prorrateoCurrentCodFilter.size > 0) filtered = filtered.filter(a => prorrateoCurrentCodFilter.has(a.cod));
-  
-  let hhPorFecha = {}, totales = {}, hhPorCod = {}, fechaMap = {};
-  filtered.forEach(a => {
-    if(!a.inicio || a.hhTotal <= 0) return;
-    const dateStr = prorrateoGetDateString(a.inicio);
-    if(!dateStr) return;
-    const fecha = new Date(dateStr);
-    const dia = String(fecha.getDate()).padStart(2, '0');
-    const mes = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][fecha.getMonth()];
-    const label = dia + '/' + mes;
-    fechaMap[dateStr] = label;
-    if(!hhPorFecha[dateStr]) hhPorFecha[dateStr] = {};
-    if(!hhPorFecha[dateStr][a.responsable]) hhPorFecha[dateStr][a.responsable] = 0;
-    hhPorFecha[dateStr][a.responsable] += a.hhTotal;
-    if(!totales[dateStr]) totales[dateStr] = 0;
-    totales[dateStr] += a.hhTotal;
-    const cod = a.cod || 'Sin Cod';
-    if(!hhPorCod[cod]) hhPorCod[cod] = 0;
-    hhPorCod[cod] += a.hhTotal;
-  });
-  
-  const fechas = Object.keys(hhPorFecha).sort();
-  if(!fechas.length) return;
-  const responsables = [...new Set(filtered.map(a => a.responsable).filter(r => r && r !== '-'))].sort();
-  const labels = fechas.map(f => fechaMap[f]);
-  
-  const ctx1 = document.getElementById('prorrateoChartSemana')?.getContext('2d');
-  if(ctx1) {
-    if(prorrateoCharts['semana']) prorrateoCharts['semana'].destroy();
-    const datasets = responsables.map((r, i) => ({ label: r, data: fechas.map(f => hhPorFecha[f][r] || 0), backgroundColor: 'hsl(' + (i * 360 / (responsables.length || 1)) + ', 70%, 60%)' }));
-    prorrateoCharts['semana'] = new Chart(ctx1, { type: 'bar', data: { labels: labels, datasets: datasets }, options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { legend: { position: 'top' } } } });
-  }
-  
-  const ctx2 = document.getElementById('prorrateoChartAcumulado')?.getContext('2d');
-  if(ctx2) {
-    if(prorrateoCharts['acumulado']) prorrateoCharts['acumulado'].destroy();
-    prorrateoCharts['acumulado'] = new Chart(ctx2, { type: 'line', data: { labels: labels, datasets: [{ label: 'Total HH', data: fechas.map(f => totales[f] || 0), borderColor: '#c41e3a', backgroundColor: 'rgba(196, 30, 58, 0.1)', tension: 0.4, fill: true }] }, options: { responsive: true } });
-  }
-  
-  const ctx3 = document.getElementById('prorrateoChartNivel')?.getContext('2d');
-  if(ctx3) {
-    if(prorrateoCharts['nivel']) prorrateoCharts['nivel'].destroy();
-    prorrateoCharts['nivel'] = new Chart(ctx3, { type: 'doughnut', data: { labels: Object.keys(hhPorCod), datasets: [{ data: Object.values(hhPorCod), backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#C9CBCF'] }] }, options: { responsive: true } });
-  }
-}
 
 render();
 </script>
