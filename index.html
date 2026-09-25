@@ -263,6 +263,10 @@ function setupTabButtons(){
   .gantt-timeline-track{position:relative; height:34px; background:var(--panel-2); border:1px solid var(--grid); border-radius:6px; margin:0 8px;}
   .gantt-timeline-ticks{position:absolute; inset:0; pointer-events:none;}
   .gantt-timeline-tick{position:absolute; top:0; bottom:0; width:1px; background:var(--grid);}
+  /* Semanas "de relleno" entre dos fechas con etiqueta (proyectos largos: no
+     todas las semanas muestran texto, para no superponerse — ver
+     renderGanttTimelineSlider) — misma marca pero más corta y tenue. */
+  .gantt-timeline-tick.gantt-timeline-tick-minor{top:8px; bottom:8px; opacity:0.45;}
   .gantt-timeline-tick-label{position:absolute; bottom:-20px; transform:translateX(-50%); font-size:9px; color:var(--ink-faint); white-space:nowrap; font-family:'IBM Plex Mono', monospace;}
   .gantt-timeline-selection{position:absolute; top:-1px; bottom:-1px; background:rgba(61,122,139,0.22); border-top:2px solid var(--plan); border-bottom:2px solid var(--plan); cursor:grab;}
   .gantt-timeline-selection:active{cursor:grabbing;}
@@ -344,16 +348,19 @@ function setupTabButtons(){
   .legend .swatch{width:16px; height:3px; border-radius:2px;}
   .legend .swatch.plan{background:var(--plan);}
   .legend .swatch.real{background:var(--real);}
+  .legend .swatch.reprog{background:var(--amber);}
 
   .chart-box{position:relative; margin-bottom:18px; height:280px;}
   .chart-box svg{display:block; width:100%; height:100%; overflow:visible;}
   .axis-label{font-family:'IBM Plex Mono', monospace; font-size:10.5px; fill:var(--ink-faint);}
   .plan-line{fill:none; stroke:var(--plan); stroke-width:3.5; stroke-dasharray:5 4; opacity:0.9;}
   .real-line{fill:none; stroke:var(--real); stroke-width:3.5; opacity:1;}
+  .reprog-line{fill:none; stroke:var(--amber); stroke-width:3; stroke-dasharray:1 3; opacity:0.95;}
   .grid-line{stroke:var(--grid); stroke-width:1.2; opacity:0.6;}
   .cur-line{stroke:var(--ink); stroke-width:1.5; stroke-dasharray:2 3; opacity:0.8;}
   .plan-pt{fill:var(--plan);}
   .real-pt{fill:var(--real);}
+  .reprog-pt{fill:var(--amber);}
 
   .stat-row{
     display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px;
@@ -477,13 +484,57 @@ function setupTabButtons(){
     white-space:nowrap;
   }
   .gantt-body{
-    position:relative; 
-    max-height:460px; 
+    position:relative;
+    max-height:460px;
     overflow-y:auto;
+    overflow-x:hidden;
     display:flex;
     flex-direction:column;
     min-width: min-content;
   }
+  /* "Diagrama de Gantt" > "Diseño clásico" (.gantt-sticky): las columnas
+     sticky (WBS…% Real) de las FILAS necesitan que NINGÚN ancestro intermedio
+     tenga overflow propio (ni "hidden"): eso convertiría a ese ancestro en su
+     propio "scroll container" para CSS, y position:sticky se ancla ahí en vez
+     de en ".gantt-wrap", dejando de verse fijo al desplazar. Por eso, SOLO
+     para esta variante, ".gantt-body" pierde su overflow/max-height propios
+     (el scroll, ambos ejes, lo maneja ".gantt-wrap" vía su estilo inline) y el
+     encabezado se fija arriba con position:sticky; top:0 dentro de ese mismo
+     contenedor. Las otras tablas que reusan .gantt-body (Responsables,
+     Entregables) NO llevan la clase .gantt-sticky, así que conservan su
+     comportamiento original (scroll vertical propio, capado a 460px). */
+  .gantt-wrap.gantt-sticky .gantt-body{
+    max-height: none;
+    overflow: visible;
+  }
+  .gantt-wrap.gantt-sticky .gantt-header{
+    position: sticky;
+    top: 0;
+    z-index: 4;
+  }
+  .gantt-topscroll{overflow-x:auto; overflow-y:hidden; height:14px; margin-bottom:6px;}
+  .gantt-topscroll-inner{height:1px;}
+
+  /* Columnas fijas (WBS…% Real) en "Diagrama de Gantt" > "Diseño clásico": al
+     desplazar horizontalmente solo se mueve la línea de tiempo. Fondo opaco
+     (mismo tono que la fila, compuesto sobre --panel) para tapar las barras
+     que quedan scrolleadas detrás. Escopado con .gantt-sticky para no afectar
+     otras tablas que reusan .gantt-header-col/.gantt-col (Responsables, Entregables). */
+  .gantt-wrap.gantt-sticky .gantt-header-col,
+  .gantt-wrap.gantt-sticky .gantt-col{
+    position: sticky;
+    z-index: 3;
+    background: var(--panel-2);
+  }
+  .gantt-wrap.gantt-sticky .gantt-header-col:last-of-type,
+  .gantt-wrap.gantt-sticky .gantt-col[data-col="5"]{
+    box-shadow: 2px 0 4px rgba(0,0,0,0.08);
+  }
+  .gantt-wrap.gantt-sticky .gantt-row .gantt-col{ background: var(--panel); }
+  .gantt-wrap.gantt-sticky .gantt-row[data-level="1"] .gantt-col{ background: linear-gradient(rgba(192,0,0,0.04), rgba(192,0,0,0.04)), var(--panel); }
+  .gantt-wrap.gantt-sticky .gantt-row[data-level="2"] .gantt-col{ background: linear-gradient(rgba(192,0,0,0.02), rgba(192,0,0,0.02)), var(--panel); }
+  .gantt-wrap.gantt-sticky .gantt-row[data-level="3"] .gantt-col{ background: linear-gradient(rgba(0,0,0,0.01), rgba(0,0,0,0.01)), var(--panel); }
+  .gantt-wrap.gantt-sticky .gantt-row:hover .gantt-col{ background: var(--panel-2); }
   .gantt-row{
     display:flex; 
     align-items:stretch; 
@@ -560,15 +611,31 @@ function setupTabButtons(){
   .ppt-empty{text-align:center; color:var(--ink-faint); font-size:13px; padding:40px 10px;}
 
   /* --- Diagrama de Gantt (slide 1) --- */
+  /* El ancho de la línea de tiempo (.ppt-gantt-ticks / .ppt-gantt-track) es
+     PROPORCIONAL a la cantidad de semanas visibles (se fija inline, por JS,
+     según el rango de fechas — ver buildGanttPPTCore) para que las fechas no
+     se aprieten/superpongan en proyectos largos; el exceso se navega con el
+     scroll horizontal de ".ppt-gantt-wrap". La columna de actividad
+     (.ppt-gantt-corner / .ppt-gantt-label) queda fija (sticky) a la izquierda. */
   .ppt-gantt-wrap{position:relative; padding-top:6px;}
+  /* SOLO para "Para PPT" > "Diagrama de Gantt" (vista simple, sin columnas):
+     este div es el que scrollea horizontalmente. OJO: ".ppt-gantt-wrap" (sin
+     este modificador) también lo usa "Diagrama de Gantt" > "Diseño nuevo"
+     (buildGanttPPTColumnsView), donde el scroll real es ".ppt-gantt-scrollarea"
+     un nivel más arriba — si este mismo overflow se aplicara ahí también,
+     ".ppt-gantt-wrap" pasaría a ser el ancestro de scroll más cercano para las
+     columnas sticky (en vez de ".ppt-gantt-scrollarea"), y como en ese caso
+     nunca desborda (mide justo el ancho de su contenido), las columnas
+     dejarían de verse fijas. Por eso va escopado con esta clase aparte. */
+  .ppt-gantt-wrap.ppt-gantt-wrap-simple{overflow-x:auto; padding-bottom:6px;}
   .ppt-gantt-header{display:flex; margin-bottom:2px;}
-  .ppt-gantt-corner{flex:0 0 26%;}
-  .ppt-gantt-ticks{position:relative; flex:1; height:28px; border-bottom:1px solid var(--ppt-border);}
+  .ppt-gantt-corner{flex:0 0 auto; position:sticky; left:0; z-index:3; background:var(--panel);}
+  .ppt-gantt-ticks{position:relative; flex:0 0 auto; height:28px; border-bottom:1px solid var(--ppt-border);}
   .ppt-gtick{position:absolute; bottom:4px; transform:translateX(-50%); font-size:9.5px; color:var(--ppt-gray); white-space:nowrap; font-family:'IBM Plex Mono', monospace;}
   .ppt-gantt-rows{display:flex; flex-direction:column;}
   .ppt-gantt-row{display:flex; align-items:center; min-height:32px; border-bottom:1px solid #F3F4F6;}
-  .ppt-gantt-label{flex:0 0 26%; font-size:12px; color:var(--ppt-row-label); font-weight:500; padding-right:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .ppt-gantt-track{position:relative; flex:1; height:32px;}
+  .ppt-gantt-label{flex:0 0 auto; position:sticky; left:0; z-index:2; background:var(--panel); font-size:12px; color:var(--ppt-row-label); font-weight:500; padding-right:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ppt-gantt-track{position:relative; flex:0 0 auto; height:32px;}
   .ppt-gantt-bar{position:absolute; top:8px; height:16px; border-radius:3px; background:var(--ppt-lightblue); overflow:hidden;}
   .ppt-gantt-bar-done{position:absolute; top:0; left:0; bottom:0; background:var(--ppt-teal-bar); border-radius:3px 0 0 3px;}
   .ppt-gantt-bar.ppt-bar-mgmt{background:var(--ppt-orange);}
@@ -580,14 +647,16 @@ function setupTabButtons(){
   /* --- Gantt "Diseño nuevo" con columnas (WBS/Tipo/Inicio/Fin/% Real) + scroll horizontal --- */
   .ppt-gantt-topscroll{overflow-x:auto; overflow-y:hidden; height:14px; margin-bottom:6px;}
   .ppt-gantt-topscroll-inner{height:1px;}
-  .ppt-gantt-scrollarea{overflow-x:auto; overflow-y:hidden; padding-bottom:6px;}
-  /* Caja interna con scroll VERTICAL propio para las filas de "Diseño nuevo"
-     (mismo patrón que .gantt-body en "Diseño clásico"): el encabezado de
-     columnas queda fuera de esta caja, en el flujo normal, así que nunca se
-     pierde de vista al bajar entre las actividades. */
-  .ppt-gantt-rows-scrollbox{max-height:620px; overflow-y:auto; overflow-x:hidden;}
+  /* Scroll ÚNICO (horizontal Y vertical) en ".ppt-gantt-scrollarea": las columnas
+     sticky (WBS…% Real) de las filas necesitan que NINGÚN ancestro intermedio
+     tenga overflow propio (ni "hidden"), porque eso lo convierte en su propio
+     "scroll container" para CSS y position:sticky se ancla ahí en vez de acá,
+     dejando de verse fijo al desplazar. Por eso ".ppt-gantt-rows-scrollbox" ya
+     NO tiene overflow/max-height propios; el encabezado de columnas se fija
+     arriba con position:sticky; top:0 dentro de este mismo contenedor. */
+  .ppt-gantt-scrollarea{overflow-x:auto; overflow-y:auto; max-height:670px; padding-bottom:6px;}
   .ppt-gantt-cols-row{display:flex; align-items:center; min-height:32px; border-bottom:1px solid #F3F4F6;}
-  .ppt-gantt-cols-header{min-height:auto; padding-bottom:8px; border-bottom:1px solid var(--ppt-border); font-size:10.5px; font-weight:700; color:var(--ppt-gray); text-transform:uppercase; letter-spacing:0.03em;}
+  .ppt-gantt-cols-header{min-height:auto; padding-bottom:8px; border-bottom:1px solid var(--ppt-border); font-size:10.5px; font-weight:700; color:var(--ppt-gray); text-transform:uppercase; letter-spacing:0.03em; position:sticky; top:0; z-index:4; background:var(--panel);}
   .ppt-gantt-col{flex:0 0 auto; font-size:12px; color:var(--ppt-row-label); padding-right:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .ppt-gantt-col-label{font-weight:500; font-size:12px; white-space:normal; overflow:visible; text-overflow:clip; line-height:1.3; word-break:break-word; padding-top:6px; padding-bottom:6px;}
   .ppt-gantt-cols-header .ppt-gantt-col{color:var(--ppt-gray); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em;}
@@ -681,7 +750,7 @@ function setupTabButtons(){
         </div>
         <div class="dropzone" id="dropzone">
           <h3>Carga tu planilla de Control</h3>
-          <p>Formato: hojas "Gantt" y "Curva S" / "% Línea Base"</p>
+          <p>Formato: hojas "Detalle" y "Curva"</p>
           <button class="btn" id="pickBtn">Importar Excel</button>
           <input type="file" id="fileInput" accept=".xlsx">
         </div>
@@ -880,6 +949,32 @@ let selectedResponsableFilter = ''; // filtro de responsable en página Responsa
 let entregablesCellDeliverables = {}; // key "semana_nivel" (o "semana___TOTAL__") -> [entregables] para el detalle al hacer clic
 let ganttFilterFrom = null; // filtro de rango de fechas de la ventana "Diagrama de Gantt" (Date o null)
 let ganttFilterTo = null;
+let pptGanttMaxLevel = 2; // filtro "hasta qué nivel considerar" en "Para PPT" > "Diagrama de Gantt" (1 = solo Etapas, 2 = + Paquetes de trabajo, etc.)
+let entregablesSortCol = 'wbs';  // columna de orden en "Entregables por Semana y Proyecto": 'wbs' | 'nivel'
+let entregablesSortDir = 'asc';  // 'asc' | 'desc'
+
+// Comparador "natural" para códigos WBS alfanuméricos (ej. "0", "1", "1A", "1B", "10"):
+// separa la parte numérica inicial de un posible sufijo de letras y compara por ambas,
+// para que el orden sea numérico (0,1,1A,1B,2,...,10) y no puramente alfabético.
+function compareWbsNatural(a, b){
+  const parse = s => {
+    const str = String(s || '').trim();
+    const m = str.match(/^(\d+(?:\.\d+)*)?\s*(.*)$/);
+    const numPart = m && m[1] ? m[1] : '';
+    const restPart = m ? m[2] : str;
+    const numSegments = numPart ? numPart.split('.').map(n => parseInt(n, 10)) : [];
+    return {numSegments, rest: restPart.toLowerCase(), raw: str};
+  };
+  const pa = parse(a), pb = parse(b);
+  const len = Math.max(pa.numSegments.length, pb.numSegments.length);
+  for(let i=0; i<len; i++){
+    const na = pa.numSegments[i] !== undefined ? pa.numSegments[i] : -1;
+    const nb = pb.numSegments[i] !== undefined ? pb.numSegments[i] : -1;
+    if(na !== nb) return na - nb;
+  }
+  if(pa.rest !== pb.rest) return pa.rest < pb.rest ? -1 : 1;
+  return pa.raw.localeCompare(pb.raw);
+}
 
 /* ================= date helpers ================= */
 
@@ -1023,6 +1118,29 @@ function weekIndexForDate(project, date){
   return idx;
 }
 
+// Busca hacia atrás desde `idx` el último valor no nulo de `arr` — usado para que
+// "% Real" muestre el último dato cargado en vez de quedar en blanco cuando la
+// semana exacta del corte todavía no tiene "% real" registrado en el Excel.
+function lastNonNullUpTo(arr, idx){
+  if(!arr || idx===null || idx<0) return {value: null, idx: null};
+  for(let i = Math.min(idx, arr.length - 1); i >= 0; i--){
+    const v = arr[i];
+    if(v !== null && v !== undefined) return {value: v, idx: i};
+  }
+  return {value: null, idx: null};
+}
+
+// Formatea la fecha de una semana del proyecto (por índice) como "dd/mes"
+function fmtWeekDateShort(proj, idx){
+  const fecha = idx!==null && idx>=0 ? proj.week_dates[idx] : null;
+  if(!fecha) return null;
+  const dateObj = typeof fecha === 'string' ? new Date(fecha) : fecha;
+  if(!(dateObj instanceof Date) || isNaN(dateObj)) return null;
+  const dia = dateObj.getDate().toString().padStart(2, '0');
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${dia}/${meses[dateObj.getMonth()]}`;
+}
+
 // Shared by the project list, the Curva S tab and the gauge tab.
 function computeProjectStats(proj){
   const cutIdx = weekIndexForDate(proj, selectedDate);
@@ -1046,28 +1164,24 @@ function computeProjectStats(proj){
     proj._loggedOnce = true;
   }
   
-  let progCur = null, realCur = null, weekLabel = '—', dateLabel = '—', subNote = '';
+  let progCur = null, realCur = null, realIdx = null, weekLabel = '—', dateLabel = '—', realDateLabel = null, subNote = '';
   if(cutIdx === -1){
     progCur = 0; realCur = 0; weekLabel = 'Sin iniciar'; dateLabel = 'Sin iniciar'; subNote = 'el proyecto aún no comienza a esta fecha';
   } else if(cutIdx !== null){
     progCur = proj.prog[cutIdx] ?? null;
-    realCur = proj.real[cutIdx] ?? null;
     weekLabel = proj.week_labels[cutIdx];
-    
-    // Generar dateLabel a partir de la fecha
-    const fecha = proj.week_dates[cutIdx];
-    if(fecha){
-      const dateObj = typeof fecha === 'string' ? new Date(fecha) : fecha;
-      if(dateObj instanceof Date && !isNaN(dateObj)){
-        const dia = dateObj.getDate().toString().padStart(2, '0');
-        const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-        const mes = meses[dateObj.getMonth()];
-        dateLabel = `${dia}/${mes}`;
-      }
+    dateLabel = fmtWeekDateShort(proj, cutIdx) || dateLabel;
+
+    const lastReal = lastNonNullUpTo(proj.real, cutIdx);
+    realCur = lastReal.value;
+    realIdx = lastReal.idx;
+    if(realIdx !== null && realIdx !== cutIdx){
+      realDateLabel = fmtWeekDateShort(proj, realIdx);
+      subNote = `último dato real cargado: ${proj.week_labels[realIdx]} (${realDateLabel || '—'})`;
     }
   }
   const diff = (progCur!==null && realCur!==null) ? (realCur - progCur) : null;
-  return {cutIdx, progCur, realCur, weekLabel, dateLabel, subNote, diff};
+  return {cutIdx, progCur, realCur, realIdx, weekLabel, dateLabel, realDateLabel, subNote, diff};
 }
 
 function fmtPct(v){
@@ -1135,31 +1249,24 @@ function findGanttHeader(sheet){
 }
 
 function findCurvaSSheetName(workbook){
-  console.log('Buscando hoja "Curva S"...');
-  
-  // Intentar primero "Curva S"
-  if(workbook.Sheets['Curva S']) {
-    console.log('✓ Encontrada hoja: "Curva S"\n');
-    return 'Curva S';
-  }
-  
-  // Si no, buscar "Curva"
+  console.log('Buscando hoja "Curva"...');
+
   if(workbook.Sheets['Curva']) {
-    console.log('✓ Encontrada hoja: "Curva" (alternativa a "Curva S")\n');
+    console.log('✓ Encontrada hoja: "Curva"\n');
     return 'Curva';
   }
-  
-  console.error('❌ No se encontró hoja "Curva S" o "Curva" en el Excel');
+
+  console.error('❌ No se encontró hoja "Curva" en el Excel');
   console.error('   Hojas disponibles:', workbook.SheetNames.join(', '));
   return null;
 }
 
 function findCurvaS(sheet){
-  console.log('\n🔍 findCurvaS: leyendo "Curva" con filas 7,8,15,16,23,24...');
-  
+  console.log('\n🔍 findCurvaS: leyendo "Curva" — filas detectadas por NOMBRE, no por posición...');
+
   const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
   const data = {};
-  
+
   // Leer todas las celdas
   for(let r = range.s.r; r <= range.e.r; r++){
     for(let c = range.s.c; c <= range.e.c; c++){
@@ -1168,8 +1275,8 @@ function findCurvaS(sheet){
       if(cell) data[cellAddr] = cell.v;
     }
   }
-  
-  const getCell = (r, c) => data[XLSX.utils.encode_cell({r, c})] || null;
+
+  const getCell = (r, c) => data[XLSX.utils.encode_cell({r, c})] ?? null;
   const getRow = (r) => {
     const row = [];
     for(let c = 0; c < 50; c++){
@@ -1177,33 +1284,41 @@ function findCurvaS(sheet){
     }
     return row;
   };
-  
-  let week_labels = [], week_dates = [], prog = [], real = [], etapa1 = [], etapa1Real = [], etapa2 = [], etapa2Real = [];
-  
-  // ⭐ PASO 1: Buscar fila con S1
-  console.log('  Buscando S1 en la hoja...');
-  let s1Row = -1, s1Col = -1;
-  
-  for(let r = 0; r < 30; r++){
+  const emptyResult = () => ({
+    week_labels: [], week_dates: [],
+    prog: [], real: [], reprogramado: [],
+    etapa1: [], etapa1Real: [], etapa1Reprogramado: [],
+    etapa2: [], etapa2Real: [], etapa2Reprogramado: [],
+  });
+  const normLabel = (v) => typeof v === 'string'
+    ? v.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+    : '';
+
+  // ⭐ PASO 1: Buscar TODAS las filas con "S1" — cada bloque (TOTAL, ETAPA 1, ETAPA 2...)
+  // tiene su propia fila "S1", en vez de asumir una separación fija de filas entre bloques.
+  console.log('  Buscando todas las filas "S1" (una por bloque)...');
+  const maxScanRow = Math.min(range.e.r, 200);
+  const s1Blocks = [];
+  for(let r = 0; r <= maxScanRow; r++){
     const row = getRow(r);
     for(let c = 0; c < row.length; c++){
-      const cell = row[c];
-      if(typeof cell === 'string' && cell.trim() === 'S1'){
-        s1Row = r;
-        s1Col = c;
-        console.log(`  ✓ S1 encontrado: Fila ${r}, Columna ${c}`);
+      if(typeof row[c] === 'string' && row[c].trim() === 'S1'){
+        s1Blocks.push({row: r, col: c});
+        console.log(`  ✓ Bloque S1 encontrado: Fila ${r+1}, Columna ${c}`);
         break;
       }
     }
-    if(s1Row >= 0) break;
   }
-  
-  if(s1Row < 0){
-    console.error('❌ No se encontró S1 en la hoja');
-    return {week_labels: [], week_dates: [], prog: [], real: [], etapa1: [], etapa1Real: [], etapa2: [], etapa2Real: []};
+
+  if(s1Blocks.length === 0){
+    console.error('❌ No se encontró ninguna fila "S1" en la hoja');
+    return emptyResult();
   }
-  
-  // ⭐ PASO 2: Extraer semanas S1, S2, S3...
+
+  const {row: s1Row, col: s1Col} = s1Blocks[0];
+
+  // ⭐ PASO 2: Extraer semanas S1, S2, S3... (del primer bloque; se asume que todos comparten semanas)
+  let week_labels = [];
   const semRow = getRow(s1Row);
   for(let c = s1Col; c < semRow.length; c++){
     const cell = semRow[c];
@@ -1213,116 +1328,85 @@ function findCurvaS(sheet){
       break;
     }
   }
-  
+
   console.log(`  ✓ Semanas: ${week_labels.length} [${week_labels.join(', ')}]`);
-  
+
   if(week_labels.length === 0){
     console.error('❌ No se encontraron semanas');
-    return {week_labels: [], week_dates: [], prog: [], real: [], etapa1: [], etapa1Real: [], etapa2: [], etapa2Real: []};
+    return emptyResult();
   }
-  
-  // ⭐ PASO 3: Leer fechas (fila anterior a S1)
+
+  // ⭐ PASO 3: Leer fechas (fila justo anterior a la S1 del primer bloque)
   const dateRow = getRow(s1Row - 1);
-  console.log(`  Leyendo fechas de fila ${s1Row - 1}...`);
+  let week_dates = [];
   for(let i = 0; i < week_labels.length; i++){
     const dateCell = dateRow[s1Col + i];
-    if(dateCell instanceof Date){
-      week_dates.push(dateCell);
-    } else {
-      week_dates.push(null);
-    }
+    week_dates.push(dateCell instanceof Date ? dateCell : null);
   }
   console.log(`  ✓ Fechas: ${week_dates.filter(d => d !== null).length}/${week_labels.length}`);
-  
-  // ⭐ PASO 4: Leer % Linea Base TOTAL (fila s1Row + 1)
-  const progRow = getRow(s1Row + 1);
-  console.log(`  Leyendo % Linea Base TOTAL de fila ${s1Row + 1}...`);
-  for(let i = 0; i < week_labels.length; i++){
-    const progCell = progRow[s1Col + i];
-    if(typeof progCell === 'number'){
-      prog.push(progCell);
-    } else {
-      prog.push(null);
+
+  const readSeriesRow = (r) => {
+    const row = getRow(r);
+    const arr = [];
+    for(let i = 0; i < week_labels.length; i++){
+      const v = row[s1Col + i];
+      arr.push(typeof v === 'number' ? v : null);
     }
-  }
-  console.log(`  ✓ % Linea Base TOTAL: ${prog.filter(p => p !== null).length}/${week_labels.length}`);
-  
-  // ⭐ PASO 5: Leer % Real TOTAL (fila s1Row + 2)
-  const realRow = getRow(s1Row + 2);
-  console.log(`  Leyendo % Real TOTAL de fila ${s1Row + 2}...`);
-  for(let i = 0; i < week_labels.length; i++){
-    const realCell = realRow[s1Col + i];
-    if(typeof realCell === 'number'){
-      real.push(realCell);
-    } else {
-      real.push(null);
+    return arr;
+  };
+
+  // ⭐ PASO 4: Para CADA bloque, ubicar sus filas "% linea base"/"% linha de base",
+  // "% reprogramado" (opcional) y "% real" buscando el NOMBRE de la fila (columnas antes
+  // de s1Col) en vez de un desplazamiento fijo — así no importa si se inserta o quita una
+  // fila (p.ej. "% reprogramado") dentro de un bloque.
+  const findBlockSeries = (blockLabel, blockS1Row) => {
+    let progRow = null, reprogRow = null, realRow = null;
+    const scanEnd = Math.min(blockS1Row + 8, maxScanRow);
+    for(let r = blockS1Row + 1; r <= scanEnd; r++){
+      const row = getRow(r);
+      let label = '';
+      for(let c = 0; c < Math.min(s1Col, row.length); c++){
+        if(typeof row[c] === 'string' && row[c].trim()){ label = normLabel(row[c]); break; }
+      }
+      if(!label) continue;
+      if(progRow === null && (label.includes('linea base') || label.includes('linha de base') || label.includes('linea de base'))){
+        progRow = r;
+      } else if(reprogRow === null && label.includes('reprogramad')){
+        reprogRow = r;
+      } else if(realRow === null && label.includes('real')){
+        realRow = r;
+      }
     }
-  }
-  console.log(`  ✓ % Real TOTAL: ${real.filter(r => r !== null).length}/${week_labels.length}`);
-  
-  // ⭐ PASO 6: Leer ETAPA 1 - % Linea Base (fila s1Row + 9)
-  const etapa1ProgRow = getRow(s1Row + 9);
-  console.log(`  Leyendo % Linea Base ETAPA 1 de fila ${s1Row + 9}...`);
-  for(let i = 0; i < week_labels.length; i++){
-    const cell = etapa1ProgRow[s1Col + i];
-    if(typeof cell === 'number'){
-      etapa1.push(cell);
-    } else {
-      etapa1.push(null);
-    }
-  }
-  console.log(`  ✓ % Linea Base ETAPA 1: ${etapa1.filter(p => p !== null).length}/${week_labels.length}`);
-  
-  // ⭐ PASO 7: Leer ETAPA 1 - % Real (fila s1Row + 10)
-  const etapa1RealRow = getRow(s1Row + 10);
-  console.log(`  Leyendo % Real ETAPA 1 de fila ${s1Row + 10}...`);
-  for(let i = 0; i < week_labels.length; i++){
-    const cell = etapa1RealRow[s1Col + i];
-    if(typeof cell === 'number'){
-      etapa1Real.push(cell);
-    } else {
-      etapa1Real.push(null);
-    }
-  }
-  console.log(`  ✓ % Real ETAPA 1: ${etapa1Real.filter(p => p !== null).length}/${week_labels.length}`);
-  
-  // ⭐ PASO 8: Leer ETAPA 2 - % Linea Base (fila s1Row + 17)
-  const etapa2ProgRow = getRow(s1Row + 17);
-  console.log(`  Leyendo % Linea Base ETAPA 2 de fila ${s1Row + 17}...`);
-  for(let i = 0; i < week_labels.length; i++){
-    const cell = etapa2ProgRow[s1Col + i];
-    if(typeof cell === 'number'){
-      etapa2.push(cell);
-    } else {
-      etapa2.push(null);
-    }
-  }
-  console.log(`  ✓ % Linea Base ETAPA 2: ${etapa2.filter(p => p !== null).length}/${week_labels.length}`);
-  
-  // ⭐ PASO 9: Leer ETAPA 2 - % Real (fila s1Row + 18)
-  const etapa2RealRow = getRow(s1Row + 18);
-  console.log(`  Leyendo % Real ETAPA 2 de fila ${s1Row + 18}...`);
-  for(let i = 0; i < week_labels.length; i++){
-    const cell = etapa2RealRow[s1Col + i];
-    if(typeof cell === 'number'){
-      etapa2Real.push(cell);
-    } else {
-      etapa2Real.push(null);
-    }
-  }
-  console.log(`  ✓ % Real ETAPA 2: ${etapa2Real.filter(p => p !== null).length}/${week_labels.length}`);
-  
-  console.log(`✅ findCurvaS: 3 curvas extraídas (Total, Etapa 1, Etapa 2) con % Real\n`);
-  
+    console.log(`  ✓ ${blockLabel}: progRow=${progRow!==null?progRow+1:'—'}, reprogRow=${reprogRow!==null?reprogRow+1:'—'}, realRow=${realRow!==null?realRow+1:'—'}`);
+    const prog = progRow !== null ? readSeriesRow(progRow) : week_labels.map(() => null);
+    const real = realRow !== null ? readSeriesRow(realRow) : week_labels.map(() => null);
+    const reprogramado = reprogRow !== null ? readSeriesRow(reprogRow) : week_labels.map(() => null);
+    console.log(`    % Linea Base: ${prog.filter(v=>v!==null).length}/${week_labels.length} | % Reprogramado: ${reprogramado.filter(v=>v!==null).length}/${week_labels.length} | % Real: ${real.filter(v=>v!==null).length}/${week_labels.length}`);
+    return {prog, real, reprogramado};
+  };
+
+  const totalSeries = findBlockSeries('TOTAL', s1Blocks[0].row);
+  const etapa1Series = s1Blocks.length > 1
+    ? findBlockSeries('ETAPA 1', s1Blocks[1].row)
+    : {prog: week_labels.map(()=>null), real: week_labels.map(()=>null), reprogramado: week_labels.map(()=>null)};
+  const etapa2Series = s1Blocks.length > 2
+    ? findBlockSeries('ETAPA 2', s1Blocks[2].row)
+    : {prog: week_labels.map(()=>null), real: week_labels.map(()=>null), reprogramado: week_labels.map(()=>null)};
+
+  console.log(`✅ findCurvaS: ${s1Blocks.length} bloque(s) leídos por nombre de fila\n`);
+
   return {
     week_labels,
     week_dates,
-    prog,
-    real,
-    etapa1,
-    etapa1Real,
-    etapa2,
-    etapa2Real
+    prog: totalSeries.prog,
+    real: totalSeries.real,
+    reprogramado: totalSeries.reprogramado,
+    etapa1: etapa1Series.prog,
+    etapa1Real: etapa1Series.real,
+    etapa1Reprogramado: etapa1Series.reprogramado,
+    etapa2: etapa2Series.prog,
+    etapa2Real: etapa2Series.real,
+    etapa2Reprogramado: etapa2Series.reprogramado,
   };
 }
 
@@ -1385,9 +1469,10 @@ function findGanttActivities(sheet){
         // Búsqueda con substrings para manejar palabras largas
         if(normLabel === 'n') { colMap['n'] = c; headerCount++; }
         else if(label.includes('cod') && label.includes('wbs')) { colMap['wbs'] = c; headerCount++; }
+        else if(normLabel === 'wbs') { colMap['wbs'] = c; headerCount++; }
         else if(normLabel === 'cod') { colMap['cod'] = c; headerCount++; }
-        else if(normLabel.includes('atividade') || normLabel.includes('actividad') || normLabel.includes('entregavel')) { 
-          colMap['actividad'] = c; headerCount++; 
+        else if(normLabel.includes('atividade') || normLabel.includes('actividad') || normLabel.includes('entregavel') || normLabel.includes('descripcion') || normLabel.includes('descripcao')) {
+          colMap['actividad'] = c; headerCount++;
         }
         else if(normLabel === 'tipo' && !colMap['tipo']) { colMap['tipo'] = c; headerCount++; }  // Solo la PRIMERA ocurrencia
         else if(normLabel === 'tipo doc') { colMap['tipodoc'] = c; headerCount++; }
@@ -1565,7 +1650,7 @@ function extractPPTGanttSource(sheet){
   }
 
   let headerRowIdx = -1;
-  let cN=null, cWbs=null, cAct=null, cTipo=null, cIni=null, cFin=null, cPctReal=null;
+  let cN=null, cWbs=null, cAct=null, cTipo=null, cIni=null, cFin=null, cPctReal=null, cNivel2=null;
   let nivelCandidates = [];
 
   for(let r=0; r<Math.min(rows.length, 15); r++){
@@ -1573,7 +1658,7 @@ function extractPPTGanttSource(sheet){
     if(!row.length) continue;
 
     let headerCount = 0;
-    let lN=null, lWbs=null, lAct=null, lTipo=null, lIni=null, lFin=null, lPctReal=null;
+    let lN=null, lWbs=null, lAct=null, lTipo=null, lIni=null, lFin=null, lPctReal=null, lNivel2=null;
     let lNivelCandidates = [];
 
     for(let c=0; c<row.length; c++){
@@ -1584,8 +1669,14 @@ function extractPPTGanttSource(sheet){
 
       if(normLabel === 'n'){ lN = c; headerCount++; }
       else if(label.includes('cod') && label.includes('wbs')){ lWbs = c; headerCount++; }
-      else if(normLabel.includes('atividade') || normLabel.includes('actividad') || normLabel.includes('entregavel')){ lAct = c; headerCount++; }
+      else if(normLabel === 'wbs'){ lWbs = c; headerCount++; }
+      else if(normLabel.includes('atividade') || normLabel.includes('actividad') || normLabel.includes('entregavel') || normLabel.includes('descripcion') || normLabel.includes('descripcao')){ lAct = c; headerCount++; }
       else if(normLabel === 'tipo' && lTipo===null){ lTipo = c; headerCount++; }
+      // "Nivel2": columna explícita del Excel con el nivel jerárquico NUMÉRICO
+      // (0,1,2,3...) — es la fuente autoritativa para el filtro "hasta qué
+      // nivel considerar" y para agrupar/indentar filas. Se detecta aparte de
+      // "Nivel" (columna de texto tipo "Etapa 1") para no confundirlas.
+      else if(/^nivel\s*2$/.test(normLabel)){ lNivel2 = c; headerCount++; }
       else if(normLabel === 'nivel'){ lNivelCandidates.push(c); headerCount++; }
       else if(normLabel === 'inicio'){ lIni = c; headerCount++; }
       else if(normLabel === 'fin' || normLabel === 'fim'){ lFin = c; headerCount++; }
@@ -1594,7 +1685,7 @@ function extractPPTGanttSource(sheet){
 
     if(headerCount >= 6){
       headerRowIdx = r;
-      cN=lN; cWbs=lWbs; cAct=lAct; cTipo=lTipo; cIni=lIni; cFin=lFin; cPctReal=lPctReal;
+      cN=lN; cWbs=lWbs; cAct=lAct; cTipo=lTipo; cIni=lIni; cFin=lFin; cPctReal=lPctReal; cNivel2=lNivel2;
       nivelCandidates = lNivelCandidates;
       break;
     }
@@ -1602,8 +1693,13 @@ function extractPPTGanttSource(sheet){
 
   if(headerRowIdx === -1) return [];
 
-  // Determinar, muestreando los datos, cuál columna "Nivel" candidata es la
-  // numérica (valores tipo 0,1,2,3,4) y cuál la de texto ("Etapa 1", "Total"...).
+  // Determinar cuál columna aporta el Nivel NUMÉRICO (para filtrar/indentar) y
+  // cuál el Nivel de TEXTO (nombre de la etapa, ej. "Etapa 1"):
+  // 1) Si el Excel tiene una columna "Nivel2", es siempre la numérica — no se
+  //    adivina por muestreo. "Nivel" (si también existe) queda como texto.
+  // 2) Si no hay "Nivel2", se mantiene el criterio anterior: muestrear las
+  //    columnas "Nivel" candidatas y usar como numérica la que tenga valores
+  //    mayormente numéricos (0,1,2,3...).
   const isNumericish = v => {
     if(v === null || v === undefined || v === '') return false;
     if(typeof v === 'number') return Number.isFinite(v);
@@ -1612,7 +1708,10 @@ function extractPPTGanttSource(sheet){
   };
   const sampleEnd = Math.min(rows.length, headerRowIdx + 200);
   let cNivelNum = null, cNivelTxt = null;
-  if(nivelCandidates.length === 1){
+  if(cNivel2 !== null){
+    cNivelNum = cNivel2;
+    if(nivelCandidates.length >= 1) cNivelTxt = nivelCandidates[0];
+  } else if(nivelCandidates.length === 1){
     let numHits = 0, total = 0;
     for(let r=headerRowIdx+1; r<sampleEnd; r++){
       const v = (rows[r]||[])[nivelCandidates[0]];
@@ -1728,45 +1827,36 @@ function extractPPTGanttSource(sheet){
 function extractProject(workbook, filename){
   const curvaSheetName = findCurvaSSheetName(workbook);
   if(!curvaSheetName){
-    throw new Error(`"${filename}" no tiene las hojas "Curva S" o "Curva" esperadas.`);
-  }
-  
-  // Leer Curva S primero
-  const {week_labels, week_dates, prog, real, etapa1, etapa1Real, etapa2, etapa2Real} = findCurvaS(workbook.Sheets[curvaSheetName]);
-  if(!week_labels.length){
-    throw new Error(`"${filename}": no se pudo leer la tabla de semanas en la hoja "${curvaSheetName}".`);
+    throw new Error(`"${filename}" no tiene la hoja "Curva" esperada.`);
   }
 
-  // Intentar leer actividades de "Gantt" primero, luego de "Detalle"
+  const curvaResult = findCurvaS(workbook.Sheets[curvaSheetName]);
+  const {week_labels, week_dates, prog, real, reprogramado, etapa1, etapa1Real, etapa1Reprogramado, etapa2, etapa2Real, etapa2Reprogramado} = curvaResult;
+  if(!week_labels.length){
+    throw new Error(`"${filename}": no se pudo leer la tabla de semanas en la hoja "Curva".`);
+  }
+
+  // Actividades: siempre desde la hoja "Detalle"
   let ganttRows = [];
-  let ganttSheetUsed = 'Gantt';
-  
-  if(workbook.Sheets['Gantt']){
-    ganttRows = findGanttActivities(workbook.Sheets['Gantt']);
-  }
-  
-  // Si no se encontraron actividades en Gantt, intentar en Detalle
-  if(ganttRows.length === 0 && workbook.Sheets['Detalle']){
-    console.log('ℹ️  No se encontraron actividades en "Gantt", intentando "Detalle"...');
+  if(workbook.Sheets['Detalle']){
     ganttRows = findGanttActivities(workbook.Sheets['Detalle']);
-    ganttSheetUsed = 'Detalle';
   }
-  
-  console.log(`✓ Actividades cargadas desde hoja "${ganttSheetUsed}": ${ganttRows.length} filas`);
+
+  console.log(`✓ Actividades cargadas desde hoja "Detalle": ${ganttRows.length} filas`);
 
   // Fuente independiente para "Para PPT > Diagrama de Gantt" (filas de Nivel 1 y 2
   // de la hoja "Detalle", con fechas basadas en la columna "Fin" del Excel).
   const pptGanttSource = workbook.Sheets['Detalle'] ? extractPPTGanttSource(workbook.Sheets['Detalle']) : [];
 
-  // Leer info del header (intenta Gantt, si no existe usa un default)
+  // Leer info del header desde "Detalle"
   let name = filename, semana_corte = null, hasta_el = null;
-  if(workbook.Sheets['Gantt']){
-    const headerData = findGanttHeader(workbook.Sheets['Gantt']);
+  if(workbook.Sheets['Detalle']){
+    const headerData = findGanttHeader(workbook.Sheets['Detalle']);
     name = headerData.name || name;
     semana_corte = headerData.semana_corte;
     hasta_el = headerData.hasta_el;
   }
-  
+
 
   return {
     file: filename,
@@ -1777,10 +1867,13 @@ function extractProject(workbook, filename){
     week_dates: week_dates.map(d => d instanceof Date ? d.toISOString() : d),
     prog,
     real,
+    reprogramado,
     etapa1,
     etapa1Real,
+    etapa1Reprogramado,
     etapa2,
     etapa2Real,
+    etapa2Reprogramado,
     ganttRows,
     pptGanttSource,
   };
@@ -1788,7 +1881,7 @@ function extractProject(workbook, filename){
 
 /* ================= Gráficos de Curva S (individual) ================= */
 
-function buildCurvaChart(proj, cutIdx, progKey, realKey, W, H){
+function buildCurvaChart(proj, cutIdx, progKey, realKey, W, H, reprogKey){
   const padL = 35, padR = 12, padT = 12, padB = 50;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
@@ -1858,12 +1951,27 @@ function buildCurvaChart(proj, cutIdx, progKey, realKey, W, H){
     if(realVals.length){
       svg += `<polyline class="real-line" points="${realVals.map(([i,v])=>`${x(i)},${y(v)}`).join(' ')}"/>`;
       realVals.forEach(([i,v])=>{ svg += `<circle class="real-pt" cx="${x(i)}" cy="${y(v)}" r="2"/>`; });
-      
+
       // Mostrar % final
       const lastIdx = realVals.length - 1;
       const [lastI, lastV] = realVals[lastIdx];
       const pctVal = Math.round(lastV * 100);
       svg += `<text x="${x(lastI) + 10}" y="${y(lastV) - 8}" font-size="11" font-weight="600" fill="var(--real)" opacity="0.9">${pctVal}%</text>`;
+    }
+  }
+
+  // Dibujar curva reprogramada — SOLO si la fila "% reprogramado" del Excel tiene algún dato
+  if(reprogKey && proj[reprogKey]){
+    const reprogVals = proj[reprogKey].map((v,i)=>[i,v]).filter(([,v]) => v!==null && v!==undefined);
+    if(reprogVals.length){
+      svg += `<polyline class="reprog-line" points="${reprogVals.map(([i,v])=>`${x(i)},${y(v)}`).join(' ')}"/>`;
+      reprogVals.forEach(([i,v])=>{ svg += `<circle class="reprog-pt" cx="${x(i)}" cy="${y(v)}" r="2"/>`; });
+
+      // Mostrar % final
+      const lastIdx = reprogVals.length - 1;
+      const [lastI, lastV] = reprogVals[lastIdx];
+      const pctVal = Math.round(lastV * 100);
+      svg += `<text x="${x(lastI) + 10}" y="${y(lastV) + 14}" font-size="11" font-weight="600" fill="var(--amber)" opacity="0.9">${pctVal}%</text>`;
     }
   }
 
@@ -2061,7 +2169,16 @@ function buildGanttChart(proj){
   // Calcular cuántas semanas hay entre inicio y fin
   const daysDiff = Math.ceil((maxT - minT) / (1000 * 60 * 60 * 24));
   const numWeeks = Math.ceil(daysDiff / 7) + 1; // +1 para asegurar que cubre todo
-  
+
+  // Ancho de la línea de tiempo (ticks + barras) PROPORCIONAL a la cantidad de
+  // semanas: con proyectos largos, en vez de apretar todas las fechas en un
+  // ancho fijo (quedan ilegibles, superpuestas), el diagrama se hace más ancho
+  // y se navega con el scroll horizontal (nativo + la barra de arriba). Mismo
+  // valor aplicado a ".gantt-ticks" (encabezado) y a cada ".gantt-track" (fila)
+  // para que ambos ejes queden perfectamente alineados.
+  const PX_PER_WEEK = 70;
+  const timelineW = Math.max(1200, Math.round(numWeeks * PX_PER_WEEK));
+
   const ticksHtml = Array.from({length: numWeeks}, (_, i) => {
     const tickDate = new Date(projectStart);
     tickDate.setDate(tickDate.getDate() + i * 7);
@@ -2140,9 +2257,11 @@ function buildGanttChart(proj){
         <div class="gantt-col" data-col="3" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateIni}</div>
         <div class="gantt-col" data-col="4" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateFin}</div>
         <div class="gantt-col" data-col="5" style="font-size: 12px; font-weight: 600; color: var(--real); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">${advReal}</div>
-        <div class="gantt-track">${barHtml}</div>
+        <div class="gantt-track" style="flex: 0 0 ${timelineW}px; width: ${timelineW}px;">${barHtml}</div>
       </div>`;
   }).join('');
+
+  const uid = proj.file ? proj.file.replace(/[^a-zA-Z0-9]/g,'_') : 'x';
 
   return `
     <div class="gantt-legend">
@@ -2150,15 +2269,18 @@ function buildGanttChart(proj){
       <div class="item"><span class="sw g"></span><span class="sw f" style="margin-left:-16px; width:8px;"></span> Actividad (% real)</div>
       <div class="item"><span class="dia"></span> Hito</div>
     </div>
-    <div class="gantt-wrap" style="overflow-x: auto; overflow-y: auto; max-height: 500px; border: 1px solid var(--grid);">
+    <div class="gantt-topscroll" id="ganttTopScroll_${uid}">
+      <div class="gantt-topscroll-inner" id="ganttTopScrollInner_${uid}"></div>
+    </div>
+    <div class="gantt-wrap gantt-sticky" id="ganttWrap_${uid}" style="overflow-x: auto; overflow-y: auto; max-height: 500px; border: 1px solid var(--grid);">
       <div class="gantt-header" data-gantt-header>
-        <div class="gantt-header-col" style="width: 70px;"><span>WBS</span><span class="gantt-resizer"></span></div>
-        <div class="gantt-header-col" style="width: 180px;"><span>Actividad</span><span class="gantt-resizer"></span></div>
-        <div class="gantt-header-col" style="width: 80px;"><span>Tipo</span><span class="gantt-resizer"></span></div>
-        <div class="gantt-header-col" style="width: 80px;"><span>Inicio</span><span class="gantt-resizer"></span></div>
-        <div class="gantt-header-col" style="width: 80px;"><span>Fin</span><span class="gantt-resizer"></span></div>
-        <div class="gantt-header-col" style="width: 70px; color: var(--real);"><span>% Real</span><span class="gantt-resizer"></span></div>
-        <div class="gantt-ticks">${ticksHtml}${cutoffTag}</div>
+        <div class="gantt-header-col" data-col="0" style="width: 70px;"><span>WBS</span><span class="gantt-resizer"></span></div>
+        <div class="gantt-header-col" data-col="1" style="width: 180px;"><span>Actividad</span><span class="gantt-resizer"></span></div>
+        <div class="gantt-header-col" data-col="2" style="width: 80px;"><span>Tipo</span><span class="gantt-resizer"></span></div>
+        <div class="gantt-header-col" data-col="3" style="width: 80px;"><span>Inicio</span><span class="gantt-resizer"></span></div>
+        <div class="gantt-header-col" data-col="4" style="width: 80px;"><span>Fin</span><span class="gantt-resizer"></span></div>
+        <div class="gantt-header-col" data-col="5" style="width: 70px; color: var(--real);"><span>% Real</span><span class="gantt-resizer"></span></div>
+        <div class="gantt-ticks" style="flex: 0 0 ${timelineW}px; width: ${timelineW}px;">${ticksHtml}${cutoffTag}</div>
       </div>
       <div class="gantt-body">${tableHtml}</div>
     </div>
@@ -2211,15 +2333,22 @@ function buildResponsableGanttChart(projects, responsableFilter = ''){
   // Calcular cuántas semanas hay entre inicio y fin
   const daysDiff = Math.ceil((maxT - minT) / (1000 * 60 * 60 * 24));
   const numWeeks = Math.ceil(daysDiff / 7) + 1; // +1 para asegurar que cubre todo
-  
+
+  // Ancho de la línea de tiempo PROPORCIONAL a la cantidad de semanas (mismo
+  // criterio que "Diagrama de Gantt" > "Diseño clásico"): con proyectos largos
+  // el diagrama se hace más ancho en vez de apretar las fechas, y se navega con
+  // el scroll horizontal nativo de ".gantt-wrap".
+  const PX_PER_WEEK = 70;
+  const timelineW = Math.max(1200, Math.round(numWeeks * PX_PER_WEEK));
+
   const ticksHtml = Array.from({length: numWeeks}, (_, i) => {
     const tickDate = new Date(projectStart);
     tickDate.setDate(tickDate.getDate() + i * 7);
     const p = ((tickDate.getTime() - minT) / span) * 100;
-    
+
     // No mostrar si está fuera del rango
     if(p < 0 || p > 100) return '';
-    
+
     const day = String(tickDate.getUTCDate()).padStart(2, '0');
     const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     const month = meses[tickDate.getUTCMonth()];
@@ -2254,7 +2383,7 @@ function buildResponsableGanttChart(projects, responsableFilter = ''){
           <div class="gantt-header-col" style="width: 80px;"><span>Inicio</span><span class="gantt-resizer"></span></div>
           <div class="gantt-header-col" style="width: 80px;"><span>Fin</span><span class="gantt-resizer"></span></div>
           <div class="gantt-header-col" style="width: 70px; color: var(--real);"><span>% Real</span><span class="gantt-resizer"></span></div>
-          <div class="gantt-ticks">${ticksHtml}${cutoffTag}</div>
+          <div class="gantt-ticks" style="flex: 0 0 ${timelineW}px; width: ${timelineW}px;">${ticksHtml}${cutoffTag}</div>
         </div>
         <div class="gantt-body">
     `;
@@ -2304,7 +2433,7 @@ function buildResponsableGanttChart(projects, responsableFilter = ''){
           <div class="gantt-col" data-col="3" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateIni}</div>
           <div class="gantt-col" data-col="4" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateFin}</div>
           <div class="gantt-col" data-col="5" style="font-size: 12px; font-weight: 600; color: var(--real); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">${advReal}</div>
-          <div class="gantt-track">${barHtml}</div>
+          <div class="gantt-track" style="flex: 0 0 ${timelineW}px; width: ${timelineW}px;">${barHtml}</div>
         </div>`;
     });
     
@@ -2370,7 +2499,14 @@ function buildDisciplinaGanttChart(projects, responsableFilter = ''){
   // Calcular cuántas semanas hay entre inicio y fin
   const daysDiff = Math.ceil((maxT - minT) / (1000 * 60 * 60 * 24));
   const numWeeks = Math.ceil(daysDiff / 7) + 1; // +1 para asegurar que cubre todo
-  
+
+  // Ancho de la línea de tiempo PROPORCIONAL a la cantidad de semanas (mismo
+  // criterio que "Diagrama de Gantt" > "Diseño clásico"): con proyectos largos
+  // el diagrama se hace más ancho en vez de apretar las fechas, y se navega con
+  // el scroll horizontal nativo de ".gantt-wrap".
+  const PX_PER_WEEK = 70;
+  const timelineW = Math.max(1200, Math.round(numWeeks * PX_PER_WEEK));
+
   const ticksHtml = Array.from({length: numWeeks}, (_, i) => {
     const tickDate = new Date(projectStart);
     tickDate.setDate(tickDate.getDate() + i * 7);
@@ -2405,7 +2541,7 @@ function buildDisciplinaGanttChart(projects, responsableFilter = ''){
           <div class="gantt-header-col" style="width: 80px;"><span>Inicio</span><span class="gantt-resizer"></span></div>
           <div class="gantt-header-col" style="width: 80px;"><span>Fin</span><span class="gantt-resizer"></span></div>
           <div class="gantt-header-col" style="width: 70px; color: var(--real);"><span>% Real</span><span class="gantt-resizer"></span></div>
-          <div class="gantt-ticks">${ticksHtml}${cutoffTag}</div>
+          <div class="gantt-ticks" style="flex: 0 0 ${timelineW}px; width: ${timelineW}px;">${ticksHtml}${cutoffTag}</div>
         </div>
         <div class="gantt-body">
     `;
@@ -2455,7 +2591,7 @@ function buildDisciplinaGanttChart(projects, responsableFilter = ''){
           <div class="gantt-col" data-col="3" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateIni}</div>
           <div class="gantt-col" data-col="4" style="font-size: 11px; color: var(--ink-faint); width: 80px; text-align: center; border-right: 1px solid var(--grid-soft);">${dateFin}</div>
           <div class="gantt-col" data-col="5" style="font-size: 12px; font-weight: 600; color: var(--real); width: 70px; text-align: center; border-right: 1px solid var(--grid-soft);">${advReal}</div>
-          <div class="gantt-track">${barHtml}</div>
+          <div class="gantt-track" style="flex: 0 0 ${timelineW}px; width: ${timelineW}px;">${barHtml}</div>
         </div>`;
     });
     
@@ -2517,7 +2653,7 @@ function updateHeader(){
       : 'Importa tu Excel para comenzar a ver el estado de tus proyectos.';
   } else if(currentPage === 'import'){
     title.textContent = 'Importar Excel';
-    sub.textContent = 'Carga tus planillas de control (.xlsx). Mismo formato: hojas "Gantt" y "Curva S" / "% Línea Base".';
+    sub.textContent = 'Carga tus planillas de control (.xlsx). Mismo formato: hojas "Detalle" y "Curva".';
   } else if(currentPage === 'gantt'){
     title.textContent = 'Diagrama de Gantt';
     sub.textContent = hasProjects ? `${PROJECTS.length} proyecto(s) cargado(s)` : 'Aún no has importado ningún proyecto.';
@@ -2586,17 +2722,77 @@ let resizingState = {
   headerIdx: null
 };
 
+// Recalcula el offset "left" de las columnas sticky (WBS…% Real) de
+// "Diagrama de Gantt" > "Diseño clásico" a partir del ancho REAL renderizado de
+// cada columna (que puede cambiar por el resize manual de columnas), tanto en
+// el header como en cada fila del body.
+function updateGanttStickyOffsets(wrap){
+  if(!wrap || !wrap.classList.contains('gantt-sticky')) return;
+  const header = wrap.querySelector('[data-gantt-header]');
+  if(!header) return;
+  const headerCols = header.querySelectorAll('.gantt-header-col');
+  let offset = 0;
+  headerCols.forEach((col, idx) => {
+    col.style.left = offset + 'px';
+    const bodyCols = wrap.querySelectorAll(`.gantt-body [data-col="${idx}"]`);
+    bodyCols.forEach(c => c.style.left = offset + 'px');
+    offset += col.offsetWidth;
+  });
+}
+
+// Sincroniza la barra de scroll horizontal "de arriba" (decorativa) con
+// ".gantt-wrap" (que es a la vez el contenedor con el scroll horizontal real)
+// para "Diagrama de Gantt" > "Diseño clásico". Mismo patrón que
+// wireGanttTopScroll(), pero aquí no existe un ".ppt-gantt-scrollarea"
+// separado: ".gantt-wrap" ES el elemento que scrollea.
+function wireGanttClassicTopScroll(uid){
+  const topScroll = document.getElementById(`ganttTopScroll_${uid}`);
+  const inner = document.getElementById(`ganttTopScrollInner_${uid}`);
+  const wrap = document.getElementById(`ganttWrap_${uid}`);
+  if(!topScroll || !inner || !wrap) return;
+
+  // syncAll() recalcula tanto el ancho de la barra decorativa como los offsets
+  // "left" de las columnas sticky. Ambos dependen de medidas reales del DOM
+  // (scrollWidth / offsetWidth), que salen en 0 si en ese momento la pestaña
+  // "Diseño clásico" está oculta (display:none) — por eso se vuelven a
+  // recalcular con ResizeObserver cada vez que "wrap" cambia de tamaño,
+  // incluido el momento en que la pestaña pasa de oculta a visible.
+  const syncAll = () => {
+    inner.style.width = wrap.scrollWidth + 'px';
+    updateGanttStickyOffsets(wrap);
+  };
+  syncAll();
+
+  if(typeof ResizeObserver !== 'undefined'){
+    const ro = new ResizeObserver(syncAll);
+    ro.observe(wrap);
+  } else {
+    setTimeout(syncAll, 300);
+  }
+
+  let syncing = false;
+  const applyScroll = (source, value) => {
+    if(syncing) return;
+    syncing = true;
+    if(source !== topScroll) topScroll.scrollLeft = value;
+    if(source !== wrap) wrap.scrollLeft = value;
+    syncing = false;
+  };
+  topScroll.addEventListener('scroll', () => applyScroll(topScroll, topScroll.scrollLeft));
+  wrap.addEventListener('scroll', () => applyScroll(wrap, wrap.scrollLeft));
+}
+
 function handleMouseMove(e){
   if(!resizingState.isResizing) return;
-  
+
   const delta = e.clientX - resizingState.startX;
   const newWidth = Math.max(40, resizingState.startWidth + delta);
-  
+
   // Actualizar ancho en header
   if(resizingState.col) {
     resizingState.col.style.width = newWidth + 'px';
   }
-  
+
   // Actualizar ancho en body
   if(resizingState.wrap){
     const body = resizingState.wrap.querySelector('.gantt-body');
@@ -2609,6 +2805,9 @@ function handleMouseMove(e){
         console.warn(`  ⚠️ No se encontraron elementos [data-col="${resizingState.idx}"]`);
       }
     }
+    // Las columnas sticky que están después de la que se está resizeando también
+    // cambian de posición: recalcular todos los offsets en vivo.
+    updateGanttStickyOffsets(resizingState.wrap);
   }
 }
 
@@ -2723,12 +2922,14 @@ function renderTracking(){
   const diffSign = stats.diff===null ? '' : (stats.diff >= 0 ? '+' : '');
   
   // Pestaña TOTAL
+  const hasReprogTotal = (proj.reprogramado || []).some(v => v !== null && v !== undefined);
   document.getElementById('curvaTotalBody').innerHTML = `
     <div class="legend">
       <div class="item"><span class="swatch plan"></span> % Linea Base</div>
+      ${hasReprogTotal ? '<div class="item"><span class="swatch reprog"></span> % Reprogramado</div>' : ''}
       <div class="item"><span class="swatch real"></span> % Real</div>
     </div>
-    <div class="chart-box" style="margin-bottom: 24px;">${buildCurvaChart(proj, stats.cutIdx, 'prog', 'real', 760, 280)}</div>
+    <div class="chart-box" style="margin-bottom: 24px;">${buildCurvaChart(proj, stats.cutIdx, 'prog', 'real', 760, 280, 'reprogramado')}</div>
     <div class="stat-row">
       <div class="stat">
         <div class="k">% LINEA BASE</div>
@@ -2738,29 +2939,33 @@ function renderTracking(){
       <div class="stat">
         <div class="k">% REAL</div>
         <div class="v">${fmtPct(stats.realCur)}</div>
-        <div class="sub">${stats.dateLabel}</div>
+        <div class="sub">${stats.realDateLabel ? `al ${stats.realDateLabel}` : stats.dateLabel}</div>
       </div>
       <div class="stat ${diffClass}">
         <div class="k">DIFERENCIA</div>
         <div class="v">${stats.diff===null ? '—' : diffSign + fmtPct(stats.diff)}</div>
-        <div class="sub">${stats.diff===null ? 'sin dato real a esta fecha' : (stats.diff>=0 ? 'adelantado' : 'atrasado')}</div>
+        <div class="sub">${stats.diff===null ? 'sin dato real cargado aún' : (stats.diff>=0 ? 'adelantado' : 'atrasado') + (stats.realDateLabel ? ` (real al ${stats.realDateLabel})` : '')}</div>
       </div>
     </div>
   `;
-  
+
   // Pestaña ETAPA 1
   const etapa1Prog = proj.etapa1 && stats.cutIdx >= 0 && stats.cutIdx < proj.etapa1.length ? proj.etapa1[stats.cutIdx] : null;
-  const etapa1Real = proj.etapa1Real && stats.cutIdx >= 0 && stats.cutIdx < proj.etapa1Real.length ? proj.etapa1Real[stats.cutIdx] : null;
+  const etapa1RealInfo = lastNonNullUpTo(proj.etapa1Real, stats.cutIdx);
+  const etapa1Real = etapa1RealInfo.value;
+  const etapa1RealDateLabel = (etapa1RealInfo.idx !== null && etapa1RealInfo.idx !== stats.cutIdx) ? fmtWeekDateShort(proj, etapa1RealInfo.idx) : null;
   const etapa1Diff = (etapa1Prog!==null && etapa1Real!==null) ? (etapa1Real - etapa1Prog) : null;
   const etapa1DiffClass = etapa1Diff===null ? '' : (etapa1Diff >= 0 ? 'pos' : 'neg');
   const etapa1DiffSign = etapa1Diff===null ? '' : (etapa1Diff >= 0 ? '+' : '');
   
+  const hasReprogEtapa1 = (proj.etapa1Reprogramado || []).some(v => v !== null && v !== undefined);
   document.getElementById('curvaEtapa1Body').innerHTML = `
     <div class="legend">
       <div class="item"><span class="swatch plan"></span> % Linea Base</div>
+      ${hasReprogEtapa1 ? '<div class="item"><span class="swatch reprog"></span> % Reprogramado</div>' : ''}
       <div class="item"><span class="swatch real"></span> % Real</div>
     </div>
-    <div class="chart-box" style="margin-bottom: 24px;">${buildCurvaChart(proj, stats.cutIdx, 'etapa1', 'etapa1Real', 760, 280)}</div>
+    <div class="chart-box" style="margin-bottom: 24px;">${buildCurvaChart(proj, stats.cutIdx, 'etapa1', 'etapa1Real', 760, 280, 'etapa1Reprogramado')}</div>
     <div class="stat-row">
       <div class="stat">
         <div class="k">% LINEA BASE</div>
@@ -2770,29 +2975,33 @@ function renderTracking(){
       <div class="stat">
         <div class="k">% REAL</div>
         <div class="v">${fmtPct(etapa1Real)}</div>
-        <div class="sub">${stats.dateLabel}</div>
+        <div class="sub">${etapa1RealDateLabel ? `al ${etapa1RealDateLabel}` : stats.dateLabel}</div>
       </div>
       <div class="stat ${etapa1DiffClass}">
         <div class="k">DIFERENCIA</div>
         <div class="v">${etapa1Diff===null ? '—' : etapa1DiffSign + fmtPct(etapa1Diff)}</div>
-        <div class="sub">${etapa1Diff===null ? 'sin dato real a esta fecha' : (etapa1Diff>=0 ? 'adelantado' : 'atrasado')}</div>
+        <div class="sub">${etapa1Diff===null ? 'sin dato real cargado aún' : (etapa1Diff>=0 ? 'adelantado' : 'atrasado') + (etapa1RealDateLabel ? ` (real al ${etapa1RealDateLabel})` : '')}</div>
       </div>
     </div>
   `;
-  
+
   // Pestaña ETAPA 2
   const etapa2Prog = proj.etapa2 && stats.cutIdx >= 0 && stats.cutIdx < proj.etapa2.length ? proj.etapa2[stats.cutIdx] : null;
-  const etapa2Real = proj.etapa2Real && stats.cutIdx >= 0 && stats.cutIdx < proj.etapa2Real.length ? proj.etapa2Real[stats.cutIdx] : null;
+  const etapa2RealInfo = lastNonNullUpTo(proj.etapa2Real, stats.cutIdx);
+  const etapa2Real = etapa2RealInfo.value;
+  const etapa2RealDateLabel = (etapa2RealInfo.idx !== null && etapa2RealInfo.idx !== stats.cutIdx) ? fmtWeekDateShort(proj, etapa2RealInfo.idx) : null;
   const etapa2Diff = (etapa2Prog!==null && etapa2Real!==null) ? (etapa2Real - etapa2Prog) : null;
   const etapa2DiffClass = etapa2Diff===null ? '' : (etapa2Diff >= 0 ? 'pos' : 'neg');
   const etapa2DiffSign = etapa2Diff===null ? '' : (etapa2Diff >= 0 ? '+' : '');
   
+  const hasReprogEtapa2 = (proj.etapa2Reprogramado || []).some(v => v !== null && v !== undefined);
   document.getElementById('curvaEtapa2Body').innerHTML = `
     <div class="legend">
       <div class="item"><span class="swatch plan"></span> % Linea Base</div>
+      ${hasReprogEtapa2 ? '<div class="item"><span class="swatch reprog"></span> % Reprogramado</div>' : ''}
       <div class="item"><span class="swatch real"></span> % Real</div>
     </div>
-    <div class="chart-box" style="margin-bottom: 24px;">${buildCurvaChart(proj, stats.cutIdx, 'etapa2', 'etapa2Real', 760, 280)}</div>
+    <div class="chart-box" style="margin-bottom: 24px;">${buildCurvaChart(proj, stats.cutIdx, 'etapa2', 'etapa2Real', 760, 280, 'etapa2Reprogramado')}</div>
     <div class="stat-row">
       <div class="stat">
         <div class="k">% LINEA BASE</div>
@@ -2802,12 +3011,12 @@ function renderTracking(){
       <div class="stat">
         <div class="k">% REAL</div>
         <div class="v">${fmtPct(etapa2Real)}</div>
-        <div class="sub">${stats.dateLabel}</div>
+        <div class="sub">${etapa2RealDateLabel ? `al ${etapa2RealDateLabel}` : stats.dateLabel}</div>
       </div>
       <div class="stat ${etapa2DiffClass}">
         <div class="k">DIFERENCIA</div>
         <div class="v">${etapa2Diff===null ? '—' : etapa2DiffSign + fmtPct(etapa2Diff)}</div>
-        <div class="sub">${etapa2Diff===null ? 'sin dato real a esta fecha' : (etapa2Diff>=0 ? 'adelantado' : 'atrasado')}</div>
+        <div class="sub">${etapa2Diff===null ? 'sin dato real cargado aún' : (etapa2Diff>=0 ? 'adelantado' : 'atrasado') + (etapa2RealDateLabel ? ` (real al ${etapa2RealDateLabel})` : '')}</div>
       </div>
     </div>
   `;
@@ -3050,16 +3259,22 @@ function buildCalendarByResponsable(projects, responsableFilter = ''){
     // Generar semanas (iniciar en lunes, comenzar desde septiembre)
     // El proyecto comienza el 2026-09-07
     const projectStart = new Date('2026-09-07T00:00:00Z');
+    // ⚠️ Todas las fechas del proyecto vienen como ISO UTC (ej. "...T00:00:00Z").
+    // Para Perú (UTC-5) los métodos LOCALES (.getDay()/.setDate()/.getDate()/.getMonth())
+    // leen/escriben el día equivocado (una fecha "lunes 00:00 UTC" cae el domingo
+    // 19:00 en hora local) — por eso TODA la aritmética de fechas de esta función usa
+    // sus equivalentes UTC (.getUTCDay()/.setUTCDate()/.getUTCDate()/.getUTCMonth()),
+    // igual que el resto de la app (ver fmtDate/dateToYMD/parseUTCDate).
     const firstMondayOfSept = new Date(projectStart);
-    const dayOfWeek = firstMondayOfSept.getDay();
-    firstMondayOfSept.setDate(firstMondayOfSept.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    const dayOfWeek = firstMondayOfSept.getUTCDay();
+    firstMondayOfSept.setUTCDate(firstMondayOfSept.getUTCDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
     
     // Pero si todos los entregables del responsable son DESPUÉS del proyecto start,
     // comenzar desde ellos para evitar semanas vacías
     const startDate = minTime < projectStart.getTime() ? firstMondayOfSept : new Date(minTime);
     const adjustedStart = new Date(startDate);
-    const day1982 = adjustedStart.getDay();
-    adjustedStart.setDate(adjustedStart.getDate() - (day1982 === 0 ? 6 : day1982 - 1));
+    const day1982 = adjustedStart.getUTCDay();
+    adjustedStart.setUTCDate(adjustedStart.getUTCDate() - (day1982 === 0 ? 6 : day1982 - 1));
     
     calendarHtml += `<div style="border: 2px solid; border-color: ${respBgColor}; border-radius: 8px; overflow: hidden;">
       <div style="background: ${respBgColor}; padding: 14px 16px; font-weight: 600; color: var(--ink); border-bottom: 2px solid var(--real);">
@@ -3071,7 +3286,7 @@ function buildCalendarByResponsable(projects, responsableFilter = ''){
     while(currentDate.getTime() <= maxTime){
       const weekStart = new Date(currentDate);
       const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
       
       const weekLabel = `${fmtDate(weekStart.toISOString())} — ${fmtDate(weekEnd.toISOString())}`;
       
@@ -3080,12 +3295,16 @@ function buildCalendarByResponsable(projects, responsableFilter = ''){
           📅 ${weekLabel}
         </div>
         <div style="display: grid; grid-template-columns: repeat(7, minmax(100px, 1fr)); gap: 1px; background: var(--grid); padding: 1px;">`;
-      
-      const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+      // La semana empieza en Lunes (weekStart ya está anclado a un lunes, arriba),
+      // así que el array de nombres también debe empezar en Lunes (dayIdx 0..6 =
+      // weekStart+0..+6 = Lun..Dom) — antes empezaba en "Dom", mostrando la
+      // etiqueta equivocada para cada día.
+      const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
       const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
       dayNames.forEach((dayName, dayIdx) => {
         const dayDate = new Date(weekStart);
-        dayDate.setDate(dayDate.getDate() + dayIdx);
+        dayDate.setUTCDate(dayDate.getUTCDate() + dayIdx);
         const dayYMD = dateToYMD(dayDate.toISOString());
         
         const dayActivities = activities.filter(a => {
@@ -3100,8 +3319,8 @@ function buildCalendarByResponsable(projects, responsableFilter = ''){
           console.log(`  Día ${dayYMD}: ${dayActivities.length} entregables (mostrando solo en fecha FIN)`);
         }
         
-        const dayNum = dayDate.getDate();
-        const monthIdx = dayDate.getMonth();
+        const dayNum = dayDate.getUTCDate();
+        const monthIdx = dayDate.getUTCMonth();
         const monthName = meses[monthIdx];
         
         calendarHtml += `<div style="background: white; padding: 8px; min-height: 100px; border: 1px solid var(--grid); display: flex; flex-direction: column;">
@@ -3127,7 +3346,7 @@ Proyecto: ${a.projectName}">
       
       calendarHtml += `</div></div>`;
       
-      currentDate.setDate(currentDate.getDate() + 7);
+      currentDate.setUTCDate(currentDate.getUTCDate() + 7);
     }
     
     calendarHtml += `</div></div>`;
@@ -3213,8 +3432,11 @@ function buildEntregablesCalendarWeekly(projects, projectFilter = ''){
   
   // Generar semanas (iniciar en lunes)
   const startDate = new Date(minTime);
-  const day2257 = startDate.getDay();
-  startDate.setDate(startDate.getDate() - (day2257 === 0 ? 6 : day2257 - 1));
+  // ⚠️ Fechas ISO UTC + Perú (UTC-5): usar SIEMPRE los métodos UTC
+  // (.getUTCDay()/.setUTCDate()/.getUTCDate()/.getUTCMonth()) para que la
+  // semana quede anclada al lunes correcto (ver buildCalendarByResponsable).
+  const day2257 = startDate.getUTCDay();
+  startDate.setUTCDate(startDate.getUTCDate() - (day2257 === 0 ? 6 : day2257 - 1));
   
   let calendarHtml = '<div style="display: flex; flex-direction: column; gap: 20px; padding: 16px;">';
   
@@ -3235,7 +3457,7 @@ function buildEntregablesCalendarWeekly(projects, projectFilter = ''){
   while(currentDate.getTime() <= maxTime){
     const weekStart = new Date(currentDate);
     const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
+    weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
     
     const weekLabel = `${fmtDate(weekStart.toISOString())} — ${fmtDate(weekEnd.toISOString())}`;
     
@@ -3246,12 +3468,13 @@ function buildEntregablesCalendarWeekly(projects, projectFilter = ''){
       <div style="overflow-x: auto; overflow-y: hidden; border-top: 1px solid var(--grid);">
         <div style="display: grid; grid-template-columns: repeat(7, minmax(100px, 1fr)); gap: 1px; background: var(--grid); padding: 1px; min-width: 750px;">`;
     
-    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    // La semana empieza en Lunes (startDate ya está anclado a un lunes, arriba).
+    const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
     const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     
     dayNames.forEach((dayName, dayIdx) => {
       const dayDate = new Date(weekStart);
-      dayDate.setDate(dayDate.getDate() + dayIdx);
+      dayDate.setUTCDate(dayDate.getUTCDate() + dayIdx);
       
       const dayDeliverables = activities.filter(a => {
         try {
@@ -3268,8 +3491,8 @@ function buildEntregablesCalendarWeekly(projects, projectFilter = ''){
         }
       });
       
-      const dayNum = dayDate.getDate();
-      const monthIdx = dayDate.getMonth();
+      const dayNum = dayDate.getUTCDate();
+      const monthIdx = dayDate.getUTCMonth();
       const monthName = meses[monthIdx];
       const bgColor = dayDeliverables.length > 0 ? 'var(--panel)' : 'white';
       
@@ -3289,7 +3512,7 @@ function buildEntregablesCalendarWeekly(projects, projectFilter = ''){
     });
     
     calendarHtml += `</div></div></div>`;
-    currentDate.setDate(currentDate.getDate() + 7);
+    currentDate.setUTCDate(currentDate.getUTCDate() + 7);
   }
   
   calendarHtml += '</div>';
@@ -3437,21 +3660,46 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
   const sortedWeeks = allWeeks.sort((a, b) => a.date - b.date).map(w => w.key);
   const projectsWithData = new Set();
   deliverables.forEach(d => projectsWithData.add(d.nivelName));
-  const sortedProjects = Array.from(projectsWithData).sort();
-  
-  // Tabla de calor
-  html += `<table style="border-collapse: collapse; width: 100%; font-size: 13px; border-top: 2px solid #da2a2b;">
+
+  // WBS representativo de cada Nivel (raíz del WBS del primer entregable encontrado
+  // con ese Nivel; en la práctica cada "Etapa"/Nivel corresponde a una raíz de WBS).
+  const nivelWbsMap = {};
+  deliverables.forEach(d => {
+    if(!nivelWbsMap[d.nivelName]){
+      const wbsRoot = d.wbs ? String(d.wbs).split('.')[0].trim() : '';
+      if(wbsRoot) nivelWbsMap[d.nivelName] = wbsRoot;
+    }
+  });
+
+  // Orden de las filas: por WBS (numérico/alfanumérico) o por Nivel (alfabético),
+  // según la columna y dirección elegidas al hacer clic en la cabecera.
+  const dirMult = entregablesSortDir === 'desc' ? -1 : 1;
+  const sortedProjects = Array.from(projectsWithData).sort((a, b) => {
+    if(entregablesSortCol === 'nivel'){
+      return a.localeCompare(b) * dirMult;
+    }
+    // 'wbs' (por defecto)
+    return compareWbsNatural(nivelWbsMap[a] || '', nivelWbsMap[b] || '') * dirMult;
+  });
+
+  const sortArrow = col => entregablesSortCol === col ? (entregablesSortDir === 'asc' ? ' ▲' : ' ▼') : '';
+
+  // Tabla de calor. table-layout:fixed para que los anchos declarados se respeten
+  // aunque el texto de "Nivel" sea más largo en otro Excel (se ajusta con word-wrap
+  // en vez de ensanchar las columnas de fecha).
+  html += `<table style="border-collapse: collapse; width: 100%; font-size: 13px; border-top: 2px solid #da2a2b; table-layout: fixed;">
     <thead>
       <tr style="background: #da2a2b; border-bottom: 2px solid #da2a2b;">
-        <th style="padding: 10px 6px; text-align: left; font-weight: 600; color: white; border: none; font-size: 13px; width: 120px; background: rgba(0,0,0,0.1);">🏷️ Nivel</th>
+        <th class="entregables-sort-th" data-col="wbs" style="padding: 10px 6px; text-align: center; font-weight: 600; color: white; border: none; font-size: 13px; width: 56px; background: rgba(0,0,0,0.1); cursor: pointer; user-select: none;" title="Clic para ordenar por WBS">WBS${sortArrow('wbs')}</th>
+        <th class="entregables-sort-th" data-col="nivel" style="padding: 10px 6px; text-align: left; font-weight: 600; color: white; border: none; font-size: 13px; width: 220px; background: rgba(0,0,0,0.1); cursor: pointer; user-select: none;" title="Clic para ordenar por Nivel">🏷️ Nivel${sortArrow('nivel')}</th>
         <th style="padding: 10px 6px; text-align: center; font-weight: 600; color: white; border: none; font-size: 13px; width: 60px; background: rgba(0,0,0,0.1);">📊 Total</th>
         <th style="padding: 10px 4px; text-align: center; font-weight: 600; color: white; border: none; font-size: 13px; width: 50px; background: rgba(46,125,70,0.15);">✓ Atend.</th>
         <th style="padding: 10px 4px; text-align: center; font-weight: 600; color: white; border: none; font-size: 13px; width: 50px; background: rgba(192,0,0,0.15);">⏳ Pend.</th>`;
-  
+
   sortedWeeks.forEach(week => {
-    html += `<th style="padding: 10px 8px; text-align: center; font-weight: 600; color: white; border: none; font-size: 13px; white-space: nowrap;">${week}</th>`;
+    html += `<th style="padding: 8px 3px; text-align: center; font-weight: 600; color: white; border: none; font-size: 11px; width: 48px; white-space: nowrap;">${week}</th>`;
   });
-  
+
   html += `</tr></thead><tbody>`;
   
   let projIndex = 0;
@@ -3483,48 +3731,50 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
     projIndex++;
     
     html += `<tr style="border-bottom: 1px solid var(--grid); background: ${bgColor};">
-      <td style="padding: 12px 6px; text-align: left; color: var(--ink); font-weight: 600; border: none; background: rgba(128,128,128,0.08);">${nivelName}</td>
+      <td style="padding: 12px 4px; text-align: center; color: var(--ink-dim); font-weight: 600; border: none; background: rgba(128,128,128,0.08); font-family: var(--font-mono-marca); font-size: 11.5px;">${nivelWbsMap[nivel] || '—'}</td>
+      <td style="padding: 12px 6px; text-align: left; color: var(--ink); font-weight: 600; border: none; background: rgba(128,128,128,0.08); white-space: normal; overflow-wrap: break-word;">${nivelName}</td>
       <td style="padding: 12px 6px; text-align: center; color: var(--ink); font-weight: 600; border: none; background: rgba(128,128,128,0.08);">${totalEntregablesNivel}</td>
       <td style="padding: 12px 4px; text-align: center; color: #2E7D46; font-weight: 600; border: none; background: rgba(46,125,70,0.08);" title="Entregables atendidos (% Real = 100%)">${atendidosNivel}</td>
       <td style="padding: 12px 4px; text-align: center; color: #C00000; font-weight: 600; border: none; background: rgba(192,0,0,0.08);" title="Entregables pendientes de atender">${pendientesNivel}</td>`;
-    
+
     sortedWeeks.forEach(week => {
       const key = `${week}_${nivel}`;
       const stat = weekProjectStats[key];
       let cellHtml = '';
-      
+
       if(stat){
         const porcentaje = Math.round((stat.completado / stat.total) * 100);
         const textColor = porcentaje >= 75 ? '#2E7D46' : porcentaje >= 50 ? '#D9A441' : '#C00000';
         const clickable = stat.total > 0;
 
-        cellHtml = `<td class="${clickable ? 'entregable-cell' : ''}" ${clickable ? `data-week="${week}" data-nivel="${nivel}"` : ''} style="padding: 12px 8px; text-align: center; color: ${textColor}; font-weight: 600; border: none; background: ${bgColor}; ${clickable ? 'cursor:pointer;' : ''}" title="${clickable ? 'Clic para ver el detalle — ' : ''}Completados/Total: ${stat.completado}/${stat.total} (${porcentaje}%)">
+        cellHtml = `<td class="${clickable ? 'entregable-cell' : ''}" ${clickable ? `data-week="${week}" data-nivel="${nivel}"` : ''} style="padding: 12px 3px; text-align: center; color: ${textColor}; font-weight: 600; border: none; background: ${bgColor}; font-size: 12px; ${clickable ? 'cursor:pointer;' : ''}" title="${clickable ? 'Clic para ver el detalle — ' : ''}Completados/Total: ${stat.completado}/${stat.total} (${porcentaje}%)">
           ${stat.total > 0 ? `${stat.completado}/${stat.total}` : '-'}
         </td>`;
       } else {
-        cellHtml = `<td style="padding: 12px 8px; text-align: center; color: var(--ink-faint); border: none; background: ${bgColor};">-</td>`;
+        cellHtml = `<td style="padding: 12px 3px; text-align: center; color: var(--ink-faint); border: none; background: ${bgColor}; font-size: 12px;">-</td>`;
       }
-      
+
       html += cellHtml;
     });
-    
+
     html += '</tr>';
   });
   
   // ⭐ FILA TOTAL
   html += `<tr style="border-bottom: 2px solid #da2a2b; background: #F5F7FA; font-weight: 700;">
+    <td style="padding: 12px 4px; text-align: center; color: var(--ink); font-weight: 700; border: none; background: rgba(0,0,0,0.1);">—</td>
     <td style="padding: 12px 6px; text-align: left; color: var(--ink); font-weight: 700; border: none; background: rgba(0,0,0,0.1);">📈 TOTAL</td>
     <td style="padding: 12px 6px; text-align: center; color: var(--ink); font-weight: 700; border: none; background: rgba(0,0,0,0.1);">${totalGlobalTotal}</td>
     <td style="padding: 12px 4px; text-align: center; color: #2E7D46; font-weight: 700; border: none; background: rgba(46,125,70,0.15);">${totalGlobalAtendidos}</td>
     <td style="padding: 12px 4px; text-align: center; color: #C00000; font-weight: 700; border: none; background: rgba(192,0,0,0.15);">${totalGlobalPendientes}</td>`;
-  
+
   sortedWeeks.forEach(week => {
     const stat = totalPorSemana[week];
     const porcentaje = stat.total > 0 ? Math.round((stat.completado / stat.total) * 100) : 0;
     const textColor = porcentaje >= 75 ? '#2E7D46' : porcentaje >= 50 ? '#D9A441' : '#C00000';
     const clickable = stat.total > 0;
 
-    html += `<td class="${clickable ? 'entregable-cell' : ''}" ${clickable ? `data-week="${week}" data-nivel="__TOTAL__"` : ''} style="padding: 12px 8px; text-align: center; color: ${textColor}; font-weight: 700; border: none; background: #F5F7FA; ${clickable ? 'cursor:pointer;' : ''}" title="${clickable ? 'Clic para ver el detalle — ' : ''}Total semana ${week}: ${stat.completado}/${stat.total} (${porcentaje}%)">
+    html += `<td class="${clickable ? 'entregable-cell' : ''}" ${clickable ? `data-week="${week}" data-nivel="__TOTAL__"` : ''} style="padding: 12px 3px; text-align: center; color: ${textColor}; font-weight: 700; border: none; background: #F5F7FA; font-size: 12px; ${clickable ? 'cursor:pointer;' : ''}" title="${clickable ? 'Clic para ver el detalle — ' : ''}Total semana ${week}: ${stat.completado}/${stat.total} (${porcentaje}%)">
       ${stat.total > 0 ? `${stat.completado}/${stat.total}` : '-'}
     </td>`;
   });
@@ -3712,11 +3962,17 @@ function buildGanttPPTCore(proj, opts){
     return buildGanttPPTColumnsView(proj, rows, {minT, maxT, span, pctX, cutDate, cutDateInRange, subtitleText});
   }
 
-  // El label ocupa 26% del ancho total (ver CSS .ppt-gantt-corner / .ppt-gantt-label);
-  // para posicionar elementos relativos al ancho COMPLETO (ej. la línea de corte)
-  // hay que convertir el % relativo al track al % relativo al total.
-  const LABEL_PCT = 26;
-  const toFullPct = trackPct => LABEL_PCT + (trackPct/100) * (100 - LABEL_PCT);
+  // Columna de actividad: ancho fijo en px (queda fija/sticky a la izquierda
+  // al desplazar horizontalmente — ver CSS .ppt-gantt-corner / .ppt-gantt-label).
+  const LABEL_W = 220;
+  // Ancho de la línea de tiempo PROPORCIONAL a la cantidad de semanas visibles
+  // (columnas de la hoja "Curva" dentro del rango Inicio/Fin de estas filas):
+  // con proyectos largos, en vez de apretar las fechas hasta que se superpongan,
+  // el diagrama se hace más ancho y se navega con el scroll horizontal de
+  // ".ppt-gantt-wrap" (en vez de intentar meter todo en un ancho fijo).
+  const visibleWeeksCount = weekDates.filter(d => d && d.getTime() >= minT && d.getTime() <= maxT).length;
+  const PX_PER_WEEK = 70;
+  const trackW = Math.max(700, Math.round(visibleWeeksCount * PX_PER_WEEK));
 
   const rowsHtml = rows.map(r => {
     const iniT = new Date(r.inicio).getTime();
@@ -3734,8 +3990,8 @@ function buildGanttPPTCore(proj, opts){
     const indent = levels ? '' : `padding-left:${Math.max(0, (r.nivelNum||1) - 1) * 14}px;`;
     return `
       <div class="ppt-gantt-row">
-        <div class="ppt-gantt-label${labelClass}" style="${indent}" title="${r.actividad}">${r.actividad}</div>
-        <div class="ppt-gantt-track">
+        <div class="ppt-gantt-label${labelClass}" style="width:${LABEL_W}px; ${indent}" title="${r.actividad}">${r.actividad}</div>
+        <div class="ppt-gantt-track" style="width:${trackW}px;">
           <div class="ppt-gantt-bar${barClass}" style="left:${left}%; width:${width}%;" title="${r.actividad} — ${pctReal.toFixed(1)}% real">${barInner}</div>
         </div>
       </div>`;
@@ -3750,7 +4006,7 @@ function buildGanttPPTCore(proj, opts){
   }).join('');
 
   const cutLine = cutDateInRange
-    ? `<div class="ppt-gantt-cutline" style="left:${toFullPct(pctX(cutDate.getTime()))}%;"><span>Corte ${fmtDateDash(cutDate)}</span></div>`
+    ? `<div class="ppt-gantt-cutline" style="left:${LABEL_W + (pctX(cutDate.getTime())/100) * trackW}px;"><span>Corte ${fmtDateDash(cutDate)}</span></div>`
     : '';
 
   let pillsHtml = '';
@@ -3785,10 +4041,10 @@ function buildGanttPPTCore(proj, opts){
     <div class="ppt-card">
       <div class="ppt-title">${proj.name || 'Cronograma del proyecto'}</div>
       <div class="ppt-subtitle">${subtitleText}${cutDateInRange ? ` · Corte ${fmtDateDash(cutDate)}` : ''}</div>
-      <div class="ppt-gantt-wrap">
+      <div class="ppt-gantt-wrap ppt-gantt-wrap-simple">
         <div class="ppt-gantt-header">
-          <div class="ppt-gantt-corner"></div>
-          <div class="ppt-gantt-ticks">${ticksHtml}</div>
+          <div class="ppt-gantt-corner" style="width:${LABEL_W}px;"></div>
+          <div class="ppt-gantt-ticks" style="width:${trackW}px;">${ticksHtml}</div>
         </div>
         <div class="ppt-gantt-rows">${rowsHtml}</div>
         ${cutLine}
@@ -3819,13 +4075,26 @@ function nivelRowBg(nivelNum){
 function buildGanttPPTColumnsView(proj, rows, ctx){
   const {minT, maxT, pctX} = ctx;
 
-  const TRACK_W = 900;               // ancho fijo, en px, del área de barras/tiempo
+  // Ancho de la línea de tiempo PROPORCIONAL a la cantidad de semanas visibles
+  // (columnas de la hoja "Curva" dentro del rango Inicio/Fin de estas filas):
+  // con proyectos largos, en vez de apretar las fechas hasta que se superpongan,
+  // el diagrama se hace más ancho y se navega con el scroll horizontal.
+  const weekDatesAll = (proj.week_dates || []).map(d => d ? new Date(d) : null);
+  const visibleWeeks = weekDatesAll.filter(d => d && d.getTime() >= minT && d.getTime() <= maxT).length;
+  const PX_PER_WEEK = 70;
+  const TRACK_W = Math.max(900, Math.round(visibleWeeks * PX_PER_WEEK));
   const COL_WBS = 68, COL_LABEL = 300, COL_TIPO = 100, COL_INI = 66, COL_FIN = 66, COL_PCT = 62;
   const colsWidthPx = COL_WBS + COL_LABEL + COL_TIPO + COL_INI + COL_FIN + COL_PCT;
   const totalWidthPx = colsWidthPx + TRACK_W;
 
-  const weekDates = (proj.week_dates || []).map(d => d ? new Date(d) : null);
-  const ticksHtml = weekDates.map(d => {
+  // Columnas fijas (sticky) hasta "% Real": al desplazarse horizontalmente solo
+  // se mueve la línea de tiempo; WBS/Actividad/Tipo/Inicio/Fin/% Real quedan
+  // visibles. Offsets acumulados (izquierda) de cada columna sticky.
+  const L_WBS = 0, L_LABEL = COL_WBS, L_TIPO = L_LABEL + COL_LABEL, L_INI = L_TIPO + COL_TIPO, L_FIN = L_INI + COL_INI, L_PCT = L_FIN + COL_FIN;
+  const stickyStyle = (left, bg) => `position:sticky; left:${left}px; z-index:3; background:${bg};`;
+  const lastStickyShadow = 'box-shadow: 2px 0 4px rgba(0,0,0,0.08);';
+
+  const ticksHtml = weekDatesAll.map(d => {
     if(!d) return '';
     const t = d.getTime();
     if(t < minT || t > maxT) return '';
@@ -3847,15 +4116,18 @@ function buildGanttPPTColumnsView(proj, rows, ctx){
     const labelClass = isEtapa ? ' ppt-gantt-label-etapa' : '';
     const indent = Math.max(0, (r.nivelNum || 1) - 1) * 14;
     const rowBg = nivelRowBg(r.nivelNum);
+    // Las columnas sticky necesitan su propio fondo opaco (rowBg sobre el blanco
+    // de la tarjeta) para tapar la línea de tiempo que queda scrolleada debajo.
+    const rowBgSolid = rowBg === 'transparent' ? 'var(--panel)' : `linear-gradient(${rowBg}, ${rowBg}), var(--panel)`;
 
     return `
       <div class="ppt-gantt-cols-row" style="width:${totalWidthPx}px; background:${rowBg};">
-        <div class="ppt-gantt-col" style="width:${COL_WBS}px;" title="${r.wbs || '—'}">${r.wbs || '—'}</div>
-        <div class="ppt-gantt-col ppt-gantt-col-label${labelClass}" style="width:${COL_LABEL}px; padding-left:${indent}px;" title="${r.actividad}">${r.actividad}</div>
-        <div class="ppt-gantt-col" style="width:${COL_TIPO}px;" title="${r.tipo || '—'}">${r.tipo || '—'}</div>
-        <div class="ppt-gantt-col" style="width:${COL_INI}px;">${fmtDateDash(new Date(r.inicio))}</div>
-        <div class="ppt-gantt-col" style="width:${COL_FIN}px;">${fmtDateDash(new Date(r.fin))}</div>
-        <div class="ppt-gantt-col" style="width:${COL_PCT}px;">${fmtPctReal(r.pctReal)}</div>
+        <div class="ppt-gantt-col" style="width:${COL_WBS}px; ${stickyStyle(L_WBS, rowBgSolid)}" title="${r.wbs || '—'}">${r.wbs || '—'}</div>
+        <div class="ppt-gantt-col ppt-gantt-col-label${labelClass}" style="width:${COL_LABEL}px; padding-left:${indent}px; ${stickyStyle(L_LABEL, rowBgSolid)}" title="${r.actividad}">${r.actividad}</div>
+        <div class="ppt-gantt-col" style="width:${COL_TIPO}px; ${stickyStyle(L_TIPO, rowBgSolid)}" title="${r.tipo || '—'}">${r.tipo || '—'}</div>
+        <div class="ppt-gantt-col" style="width:${COL_INI}px; ${stickyStyle(L_INI, rowBgSolid)}">${fmtDateDash(new Date(r.inicio))}</div>
+        <div class="ppt-gantt-col" style="width:${COL_FIN}px; ${stickyStyle(L_FIN, rowBgSolid)}">${fmtDateDash(new Date(r.fin))}</div>
+        <div class="ppt-gantt-col" style="width:${COL_PCT}px; ${stickyStyle(L_PCT, rowBgSolid)} ${lastStickyShadow}">${fmtPctReal(r.pctReal)}</div>
         <div class="ppt-gantt-timeline-track" style="width:${TRACK_W}px;">
           <div class="ppt-gantt-bar${barClass}" style="left:${left}%; width:${width}%;" title="${r.actividad} — ${pctReal.toFixed(1)}% real">${barInner}</div>
         </div>
@@ -3866,12 +4138,12 @@ function buildGanttPPTColumnsView(proj, rows, ctx){
 
   const headerRowHtml = `
     <div class="ppt-gantt-cols-row ppt-gantt-cols-header" style="width:${totalWidthPx}px;">
-      <div class="ppt-gantt-col" style="width:${COL_WBS}px;">WBS</div>
-      <div class="ppt-gantt-col ppt-gantt-col-label" style="width:${COL_LABEL}px;">Actividad</div>
-      <div class="ppt-gantt-col" style="width:${COL_TIPO}px;">Tipo</div>
-      <div class="ppt-gantt-col" style="width:${COL_INI}px;">Inicio</div>
-      <div class="ppt-gantt-col" style="width:${COL_FIN}px;">Fin</div>
-      <div class="ppt-gantt-col" style="width:${COL_PCT}px;">% Real</div>
+      <div class="ppt-gantt-col" style="width:${COL_WBS}px; ${stickyStyle(L_WBS, 'var(--panel)')}">WBS</div>
+      <div class="ppt-gantt-col ppt-gantt-col-label" style="width:${COL_LABEL}px; ${stickyStyle(L_LABEL, 'var(--panel)')}">Actividad</div>
+      <div class="ppt-gantt-col" style="width:${COL_TIPO}px; ${stickyStyle(L_TIPO, 'var(--panel)')}">Tipo</div>
+      <div class="ppt-gantt-col" style="width:${COL_INI}px; ${stickyStyle(L_INI, 'var(--panel)')}">Inicio</div>
+      <div class="ppt-gantt-col" style="width:${COL_FIN}px; ${stickyStyle(L_FIN, 'var(--panel)')}">Fin</div>
+      <div class="ppt-gantt-col" style="width:${COL_PCT}px; ${stickyStyle(L_PCT, 'var(--panel)')} ${lastStickyShadow}">% Real</div>
       <div class="ppt-gantt-timeline-header" style="width:${TRACK_W}px;">${ticksHtml}</div>
     </div>`;
 
@@ -3935,14 +4207,30 @@ function wireGanttTopScroll(containerId){
   scrollArea.addEventListener('scroll', () => applyScroll(scrollArea, scrollArea.scrollLeft));
 }
 
-function buildGanttPPT(proj){
+// maxLevel: hasta qué nivel numérico (columna "Nivel" del Excel, o profundidad del
+// WBS si no hay columna "Nivel") incluir. Por defecto usa el filtro global
+// pptGanttMaxLevel (1 = solo Etapas, 2 = + Paquetes de trabajo, etc.).
+function buildGanttPPT(proj, maxLevel){
+  const level = maxLevel || pptGanttMaxLevel || 2;
+  const levels = [];
+  for(let i=1; i<=level; i++) levels.push(i);
   return buildGanttPPTCore(proj, {
-    levels: [1, 2],
+    levels,
     excludeEtapa0: true,
     showPills: true,
     showEtapaLegend: true,
-    subtitleText: 'Diagrama de Gantt por Etapa y Pacote de trabajo',
+    subtitleText: `Diagrama de Gantt por Etapa y Pacote de trabajo (hasta nivel ${level})`,
   });
+}
+
+// Nivel numérico máximo disponible en los datos del proyecto (para construir el
+// filtro "hasta qué nivel considerar" con las opciones que realmente existen).
+function maxNivelDisponible(proj){
+  let max = 1;
+  (proj.pptGanttSource || []).forEach(r => {
+    if(r.nivelNum !== null && r.nivelNum !== undefined && r.nivelNum > max) max = r.nivelNum;
+  });
+  return max;
 }
 
 // Duplicado del diseño de "Para PPT > Diagrama de Gantt" pero mostrando TODAS las
@@ -4016,7 +4304,7 @@ function buildCurvaSPPT(proj){
   const realCut = stats.realCur;
   const desviacion = stats.diff !== null ? stats.diff * 100 : null;
 
-  const fmt1 = v => v.toFixed(1).replace('.', ',');
+  const fmt1 = v => Math.round(v).toString();
   const cutLabel = cutDate ? fmtDateDash(cutDate) : stats.dateLabel;
   const desvColor = desviacion === null ? 'var(--ppt-navy)' : (desviacion < 0 ? 'var(--ppt-red)' : 'var(--ppt-teal)');
   const desvSign = (desviacion !== null && desviacion > 0) ? '+' : '';
@@ -4055,12 +4343,12 @@ function buildCurvaSPPT(proj){
           <div class="ppt-stat-card">
             <div class="ppt-stat-label">Avance Real</div>
             <div class="ppt-stat-value" style="color:var(--ppt-orange);">${realCut!==null ? fmt1(realCut*100) : '—'}%</div>
-            <div class="ppt-stat-sub">Avance real al ${cutLabel}</div>
+            <div class="ppt-stat-sub">${stats.realDateLabel ? `Avance real al ${stats.realDateLabel}` : `Avance real al ${cutLabel}`}</div>
           </div>
           <div class="ppt-stat-card">
             <div class="ppt-stat-label">Desviación</div>
             <div class="ppt-stat-value" style="color:${desvColor};">${desviacion!==null ? desvSign+fmt1(desviacion) : '—'}${desviacion!==null ? ' %' : ''}</div>
-            <div class="ppt-stat-sub">Real vs plan</div>
+            <div class="ppt-stat-sub">${stats.realDateLabel ? `Real vs plan (real al ${stats.realDateLabel})` : 'Real vs plan'}</div>
           </div>
         </div>
         <div class="ppt-chart-col">
@@ -4084,7 +4372,30 @@ function renderParaPPT(){
 
   try {
     const ganttBody = document.getElementById('pptGanttBody');
-    if(ganttBody) ganttBody.innerHTML = buildGanttPPT(proj);
+    if(ganttBody){
+      const maxNivel = maxNivelDisponible(proj);
+      if(pptGanttMaxLevel > maxNivel) pptGanttMaxLevel = maxNivel;
+      if(pptGanttMaxLevel < 1) pptGanttMaxLevel = 1;
+
+      const nivelOptions = [];
+      for(let i=1; i<=maxNivel; i++) nivelOptions.push(i);
+      const nivelFilterHtml = nivelOptions.length > 1 ? `
+        <div class="ppt-level-filter" style="display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+          <span style="font-family:var(--font-mono-marca); font-size:11.5px; color:var(--ink-dim);">Nivel a considerar:</span>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            ${nivelOptions.map(n => `<button type="button" class="ppt-level-btn" data-level="${n}" style="padding:5px 12px; border:1px solid ${n===pptGanttMaxLevel?'var(--real)':'var(--grid)'}; border-radius:14px; background:${n===pptGanttMaxLevel?'var(--real)':'#fff'}; color:${n===pptGanttMaxLevel?'#fff':'var(--ink-dim)'}; cursor:pointer; font-family:var(--font-mono-marca); font-size:11px; font-weight:600;">Hasta nivel ${n}</button>`).join('')}
+          </div>
+        </div>` : '';
+
+      ganttBody.innerHTML = nivelFilterHtml + buildGanttPPT(proj, pptGanttMaxLevel);
+
+      ganttBody.querySelectorAll('.ppt-level-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          pptGanttMaxLevel = parseInt(btn.dataset.level, 10);
+          render();
+        });
+      });
+    }
 
     const curvaBody = document.getElementById('pptCurvaBody');
     if(curvaBody) curvaBody.innerHTML = buildCurvaSPPT(proj);
@@ -4183,6 +4494,18 @@ document.addEventListener('click', e => {
   const cell = e.target.closest('.entregable-cell');
   if(cell){
     showEntregableDetailModal(cell.dataset.week, cell.dataset.nivel);
+    return;
+  }
+  const sortTh = e.target.closest('.entregables-sort-th');
+  if(sortTh){
+    const col = sortTh.dataset.col;
+    if(entregablesSortCol === col){
+      entregablesSortDir = entregablesSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      entregablesSortCol = col;
+      entregablesSortDir = 'asc';
+    }
+    render();
     return;
   }
   if(e.target.id === 'entregableDetailCloseBtn' || e.target.id === 'entregableDetailModal'){
@@ -4341,10 +4664,23 @@ function renderGanttTimelineSlider(proj){
   // Marcas semanales a lo largo de la barra (cada 7 días desde el inicio del
   // rango), como referencia visual — mismo criterio que las fechas del eje
   // del propio diagrama de Gantt (ej. "07/sep", "13/sep", ...).
+  //
+  // Esta barra es un resumen/minimapa de TODO el rango a la vez (para arrastrar
+  // y filtrar), no se ensancha ni se desplaza como los diagramas de Gantt — así
+  // que con proyectos largos (muchas semanas) no caben todas las fechas como
+  // texto sin superponerse. En vez de mostrar las 40+ etiquetas apretadas, se
+  // dibuja SIEMPRE una marca (línea) por semana, pero el TEXTO de la fecha solo
+  // se muestra cada N semanas — el N se calcula según el ancho real disponible,
+  // para que nunca queden pegadas ni ilegibles.
   const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const span = (max - min) || 1;
   const daysDiff = Math.ceil(span / (1000 * 60 * 60 * 24));
   const numWeeks = Math.ceil(daysDiff / 7) + 1;
+  const trackEl = document.getElementById('ganttTimelineTrack');
+  const trackWidthPx = (trackEl && trackEl.offsetWidth) ? trackEl.offsetWidth : 800;
+  const MIN_LABEL_SPACING_PX = 46; // ancho aprox. de una etiqueta "07/sep" + aire
+  const maxLabels = Math.max(4, Math.floor(trackWidthPx / MIN_LABEL_SPACING_PX));
+  const labelStep = Math.max(1, Math.ceil(numWeeks / maxLabels));
   const ticksFrag = [];
   for(let i = 0; i < numWeeks; i++){
     const tickDate = new Date(min);
@@ -4353,9 +4689,14 @@ function renderGanttTimelineSlider(proj){
     if(t > max) break;
     const pct = ((t - min) / span) * 100;
     if(pct < 0 || pct > 100) continue;
-    const day = String(tickDate.getDate()).padStart(2, '0');
-    const month = meses[tickDate.getMonth()];
-    ticksFrag.push(`<div class="gantt-timeline-tick" style="left:${pct}%;"><span class="gantt-timeline-tick-label">${day}/${month}</span></div>`);
+    const showLabel = (i % labelStep === 0);
+    let labelHtml = '';
+    if(showLabel){
+      const day = String(tickDate.getDate()).padStart(2, '0');
+      const month = meses[tickDate.getMonth()];
+      labelHtml = `<span class="gantt-timeline-tick-label">${day}/${month}</span>`;
+    }
+    ticksFrag.push(`<div class="gantt-timeline-tick${showLabel ? '' : ' gantt-timeline-tick-minor'}" style="left:${pct}%;">${labelHtml}</div>`);
   }
   ticksEl.innerHTML = ticksFrag.join('');
 
@@ -4526,6 +4867,11 @@ function renderGanttPage(){
     ganttBody.innerHTML = ganttHtml;
     // Inicializar resize de columnas después de renderizar
     setTimeout(() => initColumnResizing(), 50);
+    // Columnas sticky (WBS…% Real) + barra de scroll horizontal arriba del diagrama.
+    // wireGanttClassicTopScroll ya recalcula los offsets sticky al conectar
+    // (y de nuevo vía ResizeObserver si la pestaña estaba oculta al inicio).
+    const classicUid = proj.file ? proj.file.replace(/[^a-zA-Z0-9]/g,'_') : 'x';
+    setTimeout(() => wireGanttClassicTopScroll(classicUid), 60);
 
     // Pestaña "Diseño nuevo": mismo diseño de "Para PPT > Diagrama de Gantt",
     // pero con todas las actividades y sin la fila de pills de abajo.
