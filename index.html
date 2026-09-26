@@ -701,6 +701,29 @@ function setupTabButtons(){
     .ppt-gantt-corner, .ppt-gantt-label{flex-basis:34%;}
   }
 
+  /* --- Tabla "Avance Semanal" --- */
+  #avanceSemanalTable{ box-sizing: border-box; }
+  #avanceSemanalTable th, #avanceSemanalTable td{ box-sizing: border-box; }
+  #avanceSemanalTable thead th{ position: sticky; top: 0; z-index: 5; }
+  /* Nota: el efecto hover de las filas se hace pintando un overlay sobre cada
+     <td> (no con "filter" en el <tr>), porque "filter" crea un contexto de
+     apilamiento nuevo que puede hacer que la fila se pinte POR ENCIMA del
+     encabezado "sticky" al desplazarse — eso era lo que distorsionaba/rompía
+     visualmente la cabecera de "Actividad" al bajar en la tabla. */
+  #avanceSemanalTable tbody tr:hover td{ background-color: rgba(27,58,80,0.05); }
+  #avanceSemanalTable .avance-semanal-sort-th:hover{ background: var(--plan) !important; }
+  #avanceSemanalTable input[type="number"]{ transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+  #avanceSemanalTable input[type="number"]:focus{ outline: none; border-color: var(--plan) !important; box-shadow: 0 0 0 2px rgba(61,122,139,0.15); }
+  #avanceSemanalTable input[type="number"]::-webkit-inner-spin-button{ opacity: 0.5; }
+  /* Manija para ensanchar/angostar la columna "Actividad": una línea vertical
+     siempre visible (no solo al pasar el mouse) para que se note que ahí se
+     puede arrastrar; cambia a color ámbar y se engrosa un poco al pasar el
+     mouse por encima. Clase propia (no la comparte con el Diagrama de Gantt)
+     para no afectar los resizers de esa otra pantalla. */
+  .avance-semanal-resizer{ position: absolute; right: 0; top: 0; bottom: 0; width: 10px; cursor: col-resize; z-index: 3; }
+  .avance-semanal-resizer::after{ content: ''; position: absolute; right: 3px; top: 22%; bottom: 22%; width: 3px; border-radius: 2px; background: rgba(234,242,245,0.55); transition: background 0.15s ease, width 0.15s ease; }
+  .avance-semanal-resizer:hover::after{ background: var(--amber); width: 4px; }
+
 </style>
 </head>
 <body>
@@ -715,6 +738,7 @@ function setupTabButtons(){
     <div class="nav-item active" data-page="import"><span class="nav-icon">📥</span><span>Importar Excel</span><span class="count-pill" id="navFileCount">0</span></div>
     <div class="nav-item" data-page="gantt"><span class="nav-icon">📅</span><span>Diagrama de Gantt</span><span class="count-pill" id="navGanttCount">0</span></div>
     <div class="nav-item" data-page="tracking"><span class="nav-icon">📊</span><span>Curva S</span><span class="count-pill" id="navProjCount">0</span></div>
+    <div class="nav-item" data-page="avance_semanal"><span class="nav-icon">📈</span><span>Ingrese % avance</span></div>
     <div class="nav-item" data-page="responsables"><span class="nav-icon">👤</span><span>Responsables</span><span class="count-pill" id="navRespCount">0</span></div>
   <div class="nav-item" data-page="entregables">
     <span class="nav-icon">📦</span>
@@ -798,6 +822,34 @@ function setupTabButtons(){
         </div>
       </div>
 
+      <!-- ============ AVANCE SEMANAL ============ -->
+      <div class="page-section" id="page-avance_semanal">
+        <div id="avanceSemanalEmpty" class="main-empty">Importa un Excel para ingresar aquí el % de avance.</div>
+
+        <div id="avanceSemanalContent" style="display:none;">
+          <div style="padding: 12px 16px; background: var(--panel); border-radius: 6px; margin-bottom: 16px; border-left: 4px solid var(--real); display: flex; align-items: center; gap: 18px; flex-wrap: wrap;">
+            <label style="display: flex; align-items: center; gap: 10px; font-weight: 500; margin: 0;">
+              📅 Fecha de corte:
+              <input type="date" id="avanceSemanalCutoffInput" style="padding: 6px 10px; border: 1px solid var(--grid); border-radius: 4px; font-size: 13px; font-family: 'IBM Plex Mono', monospace;">
+              <span id="avanceSemanalCutoffDisplay" style="font-size: 12px; color: var(--ink-dim);">—</span>
+            </label>
+            <div style="flex: 1;"></div>
+            <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; margin: 0;">
+              Actualizar:
+              <select id="avanceSemanalActualizarFilterSelect" onchange="onAvanceSemanalActualizarFilterChange(this.value)" style="padding: 6px 10px; border: 1px solid var(--grid); border-radius: 4px; font-size: 13px;">
+                <option value="">Todos</option>
+                <option value="si">Actualizar</option>
+                <option value="no">No actualizar</option>
+              </select>
+            </label>
+            <div style="flex: 1;"></div>
+            <button onclick="exportAvanceSemanalExcel()" style="padding: 7px 16px; border: none; background: var(--real); color: #fff; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">📤 Exportar Excel</button>
+          </div>
+
+          <div class="tabs-body" id="avanceSemanalBody"></div>
+        </div>
+      </div>
+
       <!-- ============ DIAGRAMA DE GANTT ============ -->
       <div class="page-section" id="page-gantt">
         <div id="ganttEmpty" class="main-empty">Importa un Excel con la pestaña "gantt" para ver aquí el diagrama de Gantt.</div>
@@ -840,24 +892,39 @@ function setupTabButtons(){
         <div id="responsablesEmpty" class="main-empty">Importa un Excel con la pestaña "gantt" para ver aquí el cronograma por responsable.</div>
 
         <div id="responsablesContent" style="display:none;">
-          <div style="padding: 12px 16px; background: var(--panel); border-radius: 6px; margin-bottom: 16px; border-left: 4px solid var(--real);">
+          <div style="padding: 12px 16px; background: var(--panel); border-radius: 6px; margin-bottom: 16px; border-left: 4px solid var(--real); display: flex; align-items: center; gap: 22px; flex-wrap: wrap;">
             <label style="display: flex; align-items: center; gap: 12px; font-weight: 500; margin: 0;">
               🔍 Filtrar por Responsable:
-              <select id="responsableFilter" style="padding: 6px 12px; border: 1px solid var(--grid); border-radius: 4px; font-size: 13px; flex: 1; max-width: 300px;">
+              <select id="responsableFilter" style="padding: 6px 12px; border: 1px solid var(--grid); border-radius: 4px; font-size: 13px; max-width: 220px;">
                 <option value="">— Todos —</option>
               </select>
             </label>
+
+            <label style="display: flex; align-items: center; gap: 12px; font-weight: 500; margin: 0;">
+              👤 Responsable (único):
+              <select id="responsableFilterUnico" style="padding: 6px 12px; border: 1px solid var(--grid); border-radius: 4px; font-size: 13px; max-width: 220px;">
+                <option value="">— Todos —</option>
+              </select>
+            </label>
+
+            <div id="respToolbarSearchExport" style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 260px;">
+              <input type="text" id="respToolbarSearchInput" value="" placeholder="🔍 Buscar actividad o entregable..." oninput="onRespToolbarSearchInput(this.value)" style="padding: 6px 12px; border: 1px solid var(--grid); border-radius: 4px; font-size: 13px; flex: 1; min-width: 200px; max-width: 320px;">
+              <div style="flex: 1;"></div>
+              <button onclick="exportRespToolbar()" style="padding: 7px 16px; border: none; background: var(--real); color: #fff; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">📤 Exportar Excel</button>
+            </div>
           </div>
 
           <div class="tabs-container">
             <div class="tabs-header">
-              <button class="tab-button active" data-tab="resp-gantt">👤 Cronograma por Responsable</button>
-              
-              <button class="tab-button" data-tab="resp-gantt-disciplina">🏗️ Cronograma por Disciplina</button>
-              
-              <button class="tab-button" data-tab="resp-calendar-by-person">👥 Calendario por Responsable</button>
+              <button class="tab-button active" data-tab="resp-gantt" onclick="setActiveResponsablesSubTab('resp-gantt')">👤 Cronograma por Responsable</button>
+
+              <button class="tab-button" data-tab="resp-gantt-disciplina" onclick="setActiveResponsablesSubTab('resp-gantt-disciplina')">🏗️ Cronograma por Disciplina</button>
+
+              <button class="tab-button" data-tab="resp-calendar-by-person" onclick="setActiveResponsablesSubTab('resp-calendar-by-person')">👥 Responsable por Entregable</button>
+
+              <button class="tab-button" data-tab="resp-calendar-completo" onclick="setActiveResponsablesSubTab('resp-calendar-completo')">📆 Calendario por Responsable (Todo)</button>
             </div>
-            
+
             <div class="tabs-content active" id="tab-resp-gantt">
               <div class="tabs-body" id="respGanttBody"></div>
             </div>
@@ -872,6 +939,10 @@ function setupTabButtons(){
 
             <div class="tabs-content" id="tab-resp-calendar-by-person">
               <div class="tabs-body" id="respCalendarByPersonBody"></div>
+            </div>
+
+            <div class="tabs-content" id="tab-resp-calendar-completo">
+              <div class="tabs-body" id="respCalendarCompletoBody"></div>
             </div>
           </div>
         </div>
@@ -946,6 +1017,15 @@ let entregablesProjectFilter = '';    // 'inicio' | 'import' | 'tracking' | 'res
 let activeTab = 'curva'; // which tab is active in Seguimiento de Proyectos
 let respProjectFilter = ''; // filtro de proyecto en página Responsables
 let selectedResponsableFilter = ''; // filtro de responsable en página Responsables - aplica a todas las pestañas
+let calendarCompletoSearchText = ''; // texto de búsqueda de la pestaña "Calendario por Responsable (Todo)"
+let cronogramaRespSearchText = ''; // texto de búsqueda de la pestaña "Cronograma por Responsable"
+let activeResponsablesSubTab = 'resp-gantt'; // qué pestaña de Responsables está activa (controla la barra compartida de búsqueda + exportar)
+let avanceSemanalCutoffDate = null; // fecha de corte propia de la ventana "Avance Semanal" (independiente de la de "Curva S")
+let avanceSemanalOverrides = {}; // key (proyecto__cod__wbs__actividad) -> "Nuevo % Real" editado a mano por el usuario en esta sesión
+let avanceSemanalSortBy = 'n'; // columna activa de orden: 'n' (columna N del Excel, por defecto) o 'wbs'
+let avanceSemanalSortDir = 'asc'; // orden de avanceSemanalSortBy: 'asc' o 'desc'
+let avanceSemanalActividadWidth = 460; // ancho (px) de la columna "Actividad", ajustable arrastrando
+let avanceSemanalActualizarFilter = ''; // '' = todos, 'si' = solo "Actualizar", 'no' = solo "No actualizar"
 let entregablesCellDeliverables = {}; // key "semana_nivel" (o "semana___TOTAL__") -> [entregables] para el detalle al hacer clic
 let ganttFilterFrom = null; // filtro de rango de fechas de la ventana "Diagrama de Gantt" (Date o null)
 let ganttFilterTo = null;
@@ -1004,6 +1084,14 @@ function fmtDateDM(iso){
   const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const month = meses[d.getUTCMonth()];
   return `${day}/${month}`;
+}
+
+// Formato "DD/MM/AAAA" completo, usado en "Avance Semanal" y sus exports a Excel.
+function fmtDateDDMMYYYY(iso){
+  if(!iso) return '';
+  const d = (iso instanceof Date) ? iso : new Date(iso);
+  if(isNaN(d)) return '';
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
 }
 
 // Formato "DD-mes" (con guion), usado en las vistas "Para PPT"
@@ -1217,6 +1305,32 @@ function parseUTCDate(dateStr){
 
 /* ================= Excel parsing ================= */
 
+// Algunos archivos Excel declaran en "!ref" un rango usado más chico que los
+// datos reales (por ejemplo, si se resguardó/exportó el archivo y esa
+// metadata quedó desactualizada) — esto hacía que decode_range() truncara la
+// lectura antes de llegar a las últimas filas reales (se detectó con hojas
+// "Detalle" donde el Excel tenía más de 100 actividades pero solo se leían
+// las primeras 100). Esta función calcula el rango real revisando también
+// las celdas efectivamente presentes en la hoja, y usa el máximo entre eso
+// y lo declarado en "!ref", para no perder filas/columnas por una metadata
+// desactualizada (nunca reduce el rango, solo lo amplía si hace falta).
+function getEffectiveSheetRange(sheet){
+  const declared = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+  let maxR = declared.e.r, maxC = declared.e.c;
+  for(const key in sheet){
+    if(key.charAt(0) === '!') continue;
+    const m = key.match(/^([A-Z]+)(\d+)$/);
+    if(!m) continue;
+    let c = 0;
+    for(let i = 0; i < m[1].length; i++){ c = c * 26 + (m[1].charCodeAt(i) - 64); }
+    c -= 1;
+    const r = parseInt(m[2], 10) - 1;
+    if(r > maxR) maxR = r;
+    if(c > maxC) maxC = c;
+  }
+  return { s: { r: declared.s.r, c: declared.s.c }, e: { r: maxR, c: maxC } };
+}
+
 function findGanttHeader(sheet){
   // Método robusto: obtener TODOS los valores del sheet directamente
   const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
@@ -1425,30 +1539,32 @@ function findGanttActivities(sheet){
     }
     return null;
   };
-  
-  // Método robusto: obtener TODOS los valores del sheet directamente
-  const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+
+  // Método robusto: obtener TODOS los valores del sheet directamente.
+  // Se usa getEffectiveSheetRange (en vez de decode_range directo sobre
+  // "!ref") para no truncar la lectura si el Excel declaró un rango usado
+  // más chico que sus datos reales.
+  const range = getEffectiveSheetRange(sheet);
   const rows = [];
-  
-  // Leer todas las filas
+
+  // Leer todas las filas con su valor CRUDO, sin adivinar tipos todavía: la
+  // conversión número→fecha se aplica más abajo, SOLO a las columnas Inicio/Fin
+  // una vez identificadas por su encabezado (ver ensureDate(row[cIni]) /
+  // ensureDate(row[cFin])). Antes se aplicaba a CUALQUIER celda numérica > 100
+  // del sheet completo, lo que corrompía columnas como "N" para actividades
+  // con N > 100 (se convertían en objetos Date por error, y luego no se podían
+  // volver a leer como número) — mismo patrón ya usado correctamente en
+  // extractPPTGanttSource.
   for(let row = range.s.r; row <= range.e.r; row++){
     const rowData = [];
     for(let col = range.s.c; col <= range.e.c; col++){
       const cellAddr = XLSX.utils.encode_cell({r: row, c: col});
       const cell = sheet[cellAddr];
-      const value = cell ? cell.v : null;
-      
-      // Intentar convertir a fecha si es número
-      if(typeof value === 'number' && value > 100) {
-        const maybeDate = ensureDate(value);
-        rowData.push(maybeDate || value);
-      } else {
-        rowData.push(value);
-      }
+      rowData.push(cell ? cell.v : null);
     }
     rows.push(rowData);
   }
-  
+
   console.log('🔍 findGanttActivities: Total rows in sheet:', rows.length);
   
   let headerRowIdx = -1, colMap = {};
@@ -1476,6 +1592,12 @@ function findGanttActivities(sheet){
         }
         else if(normLabel === 'tipo' && !colMap['tipo']) { colMap['tipo'] = c; headerCount++; }  // Solo la PRIMERA ocurrencia
         else if(normLabel === 'tipo doc') { colMap['tipodoc'] = c; headerCount++; }
+        // "Nivel2": columna del Excel con el nivel jerárquico NUMÉRICO real
+        // (0,1,2,3,4...) — es la fuente autoritativa para mostrar/calcular el
+        // nivel (ver más abajo), igual que ya usa extractPPTGanttSource.
+        // "Nivel" (sin el 2) es una columna de TEXTO (ej. "Etapa 0", "Total")
+        // y no debe usarse como número.
+        else if(/^nivel\s*2$/.test(normLabel)) { colMap['nivel2'] = c; headerCount++; }
         else if(normLabel === 'nivel') { colMap['nivel'] = c; headerCount++; }
         else if(normLabel === 'disciplina') { colMap['disciplina'] = c; headerCount++; }
         else if(normLabel === 'inicio') { colMap['inicio'] = c; headerCount++; }
@@ -1516,10 +1638,10 @@ function findGanttActivities(sheet){
     return [];
   }
 
-  const cN = colMap['n'], cCod = colMap['cod'], cNivel = colMap['nivel'], 
+  const cN = colMap['n'], cCod = colMap['cod'], cNivel = colMap['nivel'], cNivel2 = colMap['nivel2'],
         cWbs = colMap['wbs'], cAct = colMap['actividad'], cTipo = colMap['tipo'],
         cIni = colMap['inicio'], cFin = colMap['fin'], cDias = colMap['días'],
-        cResp = colMap['responsable'], cCosto = colMap['costo total'], 
+        cResp = colMap['responsable'], cCosto = colMap['costo total'],
         cDisciplina = colMap['disciplina'], cPctReal = colMap['pctreal'];
   
   console.log(`  Columnas detectadas: cPctReal=${cPctReal} (% Real)`);
@@ -1548,13 +1670,14 @@ function findGanttActivities(sheet){
     
     // Leer N primero
     const n = cN!==undefined ? row[cN] : null;
-    
-    // Skip si N es 0 o no existe (son totales/encabezados)
-    if(n === 0 || n === '0' || !n) continue;
+
+    // Skip solo si N no existe (fila vacía/sin datos) — las filas con N=0 SÍ
+    // se muestran (antes se descartaban asumiendo que eran totales/resumen).
+    if(n === null || n === undefined || n === '') continue;
     
     const actividad = cAct!==undefined ? row[cAct] : null;
-    const inicio = cIni!==undefined ? row[cIni] : null;
-    const fin = cFin!==undefined ? row[cFin] : null;
+    const inicio = cIni!==undefined ? ensureDate(row[cIni]) : null;
+    const fin = cFin!==undefined ? ensureDate(row[cFin]) : null;
     
     skipped.totalChecked++;
     if(r <= headerRowIdx + 5) {
@@ -1573,14 +1696,20 @@ function findGanttActivities(sheet){
     
     const wbsRaw = cWbs!==undefined ? row[cWbs] : null;
     const wbsStr = (wbsRaw===null || wbsRaw===undefined) ? '' : String(wbsRaw).trim();
-    
-    // El filtro correcto es N (columna A), no WBS
-    // Las actividades con N=0 son headers/resumen
-    // WBS puede ser 0.0, 0.0.1, etc. y SON válidas
-    // Este filtro ya se hizo al inicio: if(nNum === 0) continue;
-    // Por lo tanto NO necesitamos filtro adicional de WBS aquí
-    
-    const level = wbsStr ? wbsStr.split('.').length : 1;
+
+    // Nivel: preferir la columna numérica real del Excel ("Nivel2"), y usar la
+    // profundidad del código WBS solo como respaldo cuando esa columna no
+    // exista o no traiga un valor numérico válido para esa fila. Antes se
+    // usaba SIEMPRE la profundidad del WBS, que en algunos casos (ej. la fila
+    // "Total" con WBS="0") no coincide con el nivel real de esa fila en el
+    // Excel — mismo criterio que ya usa extractPPTGanttSource.
+    const nivel2Raw = cNivel2 !== undefined ? row[cNivel2] : null;
+    let level = null;
+    if(nivel2Raw !== null && nivel2Raw !== undefined && nivel2Raw !== ''){
+      const nivel2Parsed = parseInt(String(nivel2Raw).replace(',', '.'), 10);
+      if(Number.isFinite(nivel2Parsed)) level = nivel2Parsed;
+    }
+    if(level === null) level = wbsStr ? wbsStr.split('.').length : 1;
     const tipo = cTipo!==undefined ? row[cTipo] : null;
     const cod = cCod!==undefined ? row[cCod] : null;
     const responsable = cResp!==undefined ? row[cResp] : null;
@@ -1598,7 +1727,14 @@ function findGanttActivities(sheet){
       }
     }
     
+    // Guardar el valor de "N" tal cual viene del Excel (columna A de "Detalle"),
+    // como número cuando es posible, para poder mostrarlo/ordenarlo igual que
+    // en el archivo original (ver columna "N" de "Avance Semanal").
+    const nParsed = parseFloat(n);
+    const nValue = isNaN(nParsed) ? null : nParsed;
+
     activities.push({
+      n: nValue,
       cod: cod !== null ? String(cod).trim() : '—',
       wbs: wbsStr,
       level,
@@ -1637,7 +1773,9 @@ function findGanttActivities(sheet){
 function extractPPTGanttSource(sheet){
   if(!sheet) return [];
 
-  const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+  // Mismo motivo que en findGanttActivities: no confiar solo en "!ref" por si
+  // quedó una metadata de rango desactualizada más chica que los datos reales.
+  const range = getEffectiveSheetRange(sheet);
   const rows = [];
   for(let row = range.s.r; row <= range.e.r; row++){
     const rowData = [];
@@ -2141,6 +2279,437 @@ function calculateEstimatedProgress(activity, cutDate){
   return Math.max(0, Math.min(1, progress));
 }
 
+/* ================= Avance Semanal (tabla editable de % Real) ================= */
+
+// Identificador estable de una fila, para guardar su "Nuevo % Real" editado
+// a mano y que no se pierda al re-renderizar (cambiar filtro, corte, etc.).
+function avanceSemanalRowKey(projName, r){
+  return `${projName}__${r.cod || ''}__${r.wbs || ''}__${r.actividad || ''}`;
+}
+
+function updateNuevoPctReal(key, value){
+  const num = parseFloat(value);
+  if(value === '' || isNaN(num)){
+    delete avanceSemanalOverrides[key];
+  } else {
+    avanceSemanalOverrides[key] = Math.max(0, Math.min(100, Math.round(num)));
+  }
+}
+
+function updateAvanceSemanalCutoffDisplay(){
+  const display = document.getElementById('avanceSemanalCutoffDisplay');
+  if(!display) return;
+  display.textContent = avanceSemanalCutoffDate ? fmtDateDDMMYYYY(avanceSemanalCutoffDate) : '—';
+}
+
+function toggleAvanceSemanalSort(col){
+  if(avanceSemanalSortBy === col){
+    avanceSemanalSortDir = avanceSemanalSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    avanceSemanalSortBy = col;
+    avanceSemanalSortDir = 'asc';
+  }
+  renderAvanceSemanal();
+}
+
+function onAvanceSemanalActualizarFilterChange(value){
+  avanceSemanalActualizarFilter = value;
+  renderAvanceSemanal();
+}
+
+// Nivel más profundo (hoja) presente en TODAS las actividades del proyecto
+// (sin filtrar) — sirve para saber, fila por fila, si es un nivel "superior"
+// (Pacote/resumen, se pinta) o el último nivel (hoja, no se pinta y es el
+// único que permite editar "Nuevo % Real").
+function avanceSemanalMaxLevel(allRows){
+  let max = 1;
+  (allRows || []).forEach(r => { if(r.level > max) max = r.level; });
+  return max;
+}
+
+// Ordena las filas según la columna activa: 'n' usa el valor literal de la
+// columna "N" del Excel (tal cual viene, sin recalcular), 'wbs' usa el
+// comparador natural de WBS ya existente en el resto del dashboard.
+function avanceSemanalSortRows(rows){
+  const sorted = rows.slice();
+  if(avanceSemanalSortBy === 'n'){
+    sorted.sort((a, b) => {
+      const na = (a.n === null || a.n === undefined || isNaN(a.n)) ? Infinity : a.n;
+      const nb = (b.n === null || b.n === undefined || isNaN(b.n)) ? Infinity : b.n;
+      return na - nb;
+    });
+  } else {
+    sorted.sort((a, b) => compareWbsNatural(a.wbs, b.wbs));
+  }
+  if(avanceSemanalSortDir === 'desc') sorted.reverse();
+  return sorted;
+}
+
+function startAvanceSemanalActividadResize(e){
+  e.preventDefault();
+  e.stopPropagation();
+  const startX = e.clientX;
+  const startWidth = avanceSemanalActividadWidth;
+  const col = document.getElementById('avanceSemanalActividadCol');
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+
+  function onMove(ev){
+    const newWidth = Math.max(150, Math.min(900, startWidth + (ev.clientX - startX)));
+    avanceSemanalActividadWidth = newWidth;
+    if(col) col.style.width = newWidth + 'px';
+  }
+  function onUp(){
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+function avanceSemanalPill(text, colorHex, bgRgba){
+  return `<span style="display:inline-block; min-width: 42px; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 12px; background: ${bgRgba}; color: ${colorHex};">${text}</span>`;
+}
+
+function buildAvanceSemanalTable(proj){
+  if(!proj || !proj.ganttRows || !proj.ganttRows.length){
+    return '<div style="padding: 20px; text-align: center; color: var(--ink-faint);">No hay actividades para mostrar.</div>';
+  }
+
+  const cutoffDate = avanceSemanalCutoffDate;
+  // El nivel más profundo (hoja) se calcula sobre TODAS las actividades del
+  // proyecto (sin filtrar por "Actualizar"), para que no cambie según el filtro.
+  const maxLevel = avanceSemanalMaxLevel(proj.ganttRows);
+
+  let rows = avanceSemanalSortRows(proj.ganttRows);
+
+  // Se calcula "% Línea Base" / "¿necesita actualizar?" para cada fila ANTES
+  // de aplicar el filtro "Actualizar", ya que el filtro depende de ese valor.
+  let rowsWithMeta = rows.map(r => {
+    const estProg = calculateEstimatedProgress(r, cutoffDate); // 0-1 o null
+    const progNum = estProg === null ? null : estProg * 100;
+    const isLeaf = r.level >= maxLevel;
+    // "Actualizar" solo tiene sentido en el ÚLTIMO nivel (hoja): es la única
+    // fila donde el % Real se ingresa a mano. Las filas superiores (Pacotes/
+    // resúmenes) siempre muestran "No actualizar", sin importar su % Línea
+    // Base, porque no son ellas las que se actualizan directamente.
+    const needsUpdate = isLeaf && progNum !== null && progNum > 0;
+    return { r, progNum, needsUpdate, isLeaf };
+  });
+  if(avanceSemanalActualizarFilter === 'si') rowsWithMeta = rowsWithMeta.filter(x => x.needsUpdate);
+  else if(avanceSemanalActualizarFilter === 'no') rowsWithMeta = rowsWithMeta.filter(x => !x.needsUpdate);
+
+  if(!rowsWithMeta.length){
+    return '<div style="padding: 20px; text-align: center; color: var(--ink-faint);">No hay actividades que coincidan con el filtro "Actualizar".</div>';
+  }
+
+  const activeArrow = avanceSemanalSortDir === 'asc' ? '▲' : '▼';
+  const nArrow = avanceSemanalSortBy === 'n' ? activeArrow : '⇅';
+  const wbsArrow = avanceSemanalSortBy === 'wbs' ? activeArrow : '⇅';
+  const nArrowColor = avanceSemanalSortBy === 'n' ? 'var(--amber)' : 'rgba(234,242,245,0.45)';
+  const wbsArrowColor = avanceSemanalSortBy === 'wbs' ? 'var(--amber)' : 'rgba(234,242,245,0.45)';
+  const actividadWidth = avanceSemanalActividadWidth || 320;
+
+  // Colores hex reales de las variables --real/--pos/--neg/--ink-dim/--amber
+  // (se necesitan en hex/rgba explícitos para armar los fondos translúcidos de las píldoras).
+  const COL_REAL = '#3D7A8B';
+  const COL_POS = '#1E8E5A';
+  const COL_NEG = '#C0392B';
+  const COL_NEUTRAL = '#2C4A5F';
+
+  const thStyle = 'padding: 11px 12px; font-size: 11px; font-weight: 700; color: #EAF2F5; text-align: center; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.5px; background: var(--ink);';
+  const tdStyle = 'padding: 9px 12px; font-size: 12.5px; text-align: center; border-bottom: 1px solid var(--grid-soft);';
+
+  let html = `
+    <div style="overflow: auto; max-height: 70vh; border: 1px solid var(--grid); border-radius: 12px; box-shadow: 0 2px 10px rgba(27,58,80,0.10);">
+      <table id="avanceSemanalTable" style="border-collapse: collapse; table-layout: fixed;">
+        <colgroup>
+          <col style="width: 56px;">
+          <col style="width: 64px;">
+          <col style="width: 90px;">
+          <col id="avanceSemanalActividadCol" style="width: ${actividadWidth}px;">
+          <col style="width: 100px;">
+          <col style="width: 95px;">
+          <col style="width: 95px;">
+          <col style="width: 105px;">
+          <col style="width: 90px;">
+          <col style="width: 100px;">
+          <col style="width: 130px;">
+          <col style="width: 120px;">
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="avance-semanal-sort-th" style="${thStyle} cursor: pointer;" onclick="toggleAvanceSemanalSort('n')" title="Ordenar por N (orden original del Excel)">N <span style="color: ${nArrowColor};">${nArrow}</span></th>
+            <th style="${thStyle}" title="Nivel jerárquico del WBS (1 = más alto)">Nivel</th>
+            <th class="avance-semanal-sort-th" style="${thStyle} text-align: left; cursor: pointer;" onclick="toggleAvanceSemanalSort('wbs')" title="Ordenar por WBS">WBS <span style="color: ${wbsArrowColor};">${wbsArrow}</span></th>
+            <th style="${thStyle} text-align: left;" title="Arrastra el borde derecho para ensanchar o angostar esta columna">Actividad<span class="avance-semanal-resizer" onmousedown="startAvanceSemanalActividadResize(event)"></span></th>
+            <th style="${thStyle}">Tipo</th>
+            <th style="${thStyle}">Inicio</th>
+            <th style="${thStyle}">Fin</th>
+            <th style="${thStyle}" title="Progreso planificado según la línea base del cronograma">% Línea Base</th>
+            <th style="${thStyle} color: #B7F0E1;">% Real</th>
+            <th style="${thStyle}">% Diferencia</th>
+            <th style="${thStyle} color: #B7F0E1;">Nuevo % Real</th>
+            <th style="${thStyle}" title="Actividades cuya % Línea Base ya es mayor a 0% en la fecha de corte: ya deberían tener su % Real actualizado">Actualizar</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  rowsWithMeta.forEach(({ r, progNum, needsUpdate, isLeaf }) => {
+    const key = avanceSemanalRowKey(proj.name, r);
+    const realNum = entregablePctRealNum(r);
+    const diffNum = (progNum === null) ? null : (realNum - progNum);
+    const nuevoVal = (avanceSemanalOverrides[key] !== undefined) ? avanceSemanalOverrides[key] : Math.round(realNum);
+
+    // Pintado de celda para los niveles SUPERIORES (todos menos el último/hoja
+    // de este proyecto): tinte suave + barra de acento a la izquierda, más
+    // fuerte cuanto más "arriba" está. El Nivel 0 (total general) lleva un
+    // color propio, más fuerte y distinto del resto (antes usaba la misma
+    // fórmula que Nivel 1 y quedaba exactamente del mismo color). El último
+    // nivel (hoja) NO lleva ningún color de fondo (ni siquiera zebra-striping).
+    let rowBg, leftAccent, fontWeight;
+    if(isLeaf){
+      rowBg = 'transparent';
+      leftAccent = '3px solid transparent';
+      fontWeight = '400';
+    } else if(r.level === 0){
+      rowBg = 'rgba(192,0,0,0.16)';
+      leftAccent = '3px solid rgba(192,0,0,1)';
+      fontWeight = '700';
+    } else {
+      const tintAlpha = Math.min(0.09, 0.09 / r.level);
+      const leftAccentAlpha = Math.min(1, 1 / r.level);
+      rowBg = `rgba(192,0,0,${tintAlpha.toFixed(3)})`;
+      leftAccent = `3px solid rgba(192,0,0,${leftAccentAlpha.toFixed(2)})`;
+      fontWeight = (r.level === 1) ? '700' : '600';
+    }
+
+    const diffColor = diffNum === null ? COL_NEUTRAL : (diffNum < -0.5 ? COL_NEG : (diffNum > 0.5 ? COL_POS : COL_NEUTRAL));
+    const diffBg = diffNum === null ? 'rgba(44,74,95,0.06)' : (diffNum < -0.5 ? 'rgba(192,57,43,0.12)' : (diffNum > 0.5 ? 'rgba(30,142,90,0.12)' : 'rgba(44,74,95,0.06)'));
+    const diffTxt = diffNum === null ? '—' : `${diffNum > 0 ? '+' : ''}${Math.round(diffNum)}%`;
+
+    // "Actualizar" / "No actualizar": marca las actividades que, según la
+    // fecha de corte, ya deberían tener avance (% Línea Base > 0%).
+    const updateCell = needsUpdate
+      ? avanceSemanalPill('🔔 Actualizar', '#B7791F', 'rgba(243,156,18,0.16)')
+      : avanceSemanalPill('No actualizar', COL_NEUTRAL, 'rgba(44,74,95,0.06)');
+
+    // "Nuevo % Real" solo es editable en el ÚLTIMO nivel (hoja): en los
+    // niveles superiores (Pacotes/resúmenes) no tiene sentido escribir un %
+    // a mano, así que se muestra un guion en su lugar.
+    const nuevoRealCell = isLeaf
+      ? `<div style="display: inline-flex; align-items: center; gap: 4px;">
+           <input type="number" min="0" max="100" step="1" value="${Math.round(nuevoVal)}" oninput="updateNuevoPctReal('${key.replace(/'/g, "\\'")}', this.value)" style="width: 58px; padding: 4px 6px; border: 1px solid var(--grid); border-radius: 5px; font-size: 12px; text-align: center; font-weight: 700; color: var(--ink);">
+           <span style="font-size: 12px; color: var(--ink-dim); font-weight: 600;">%</span>
+         </div>`
+      : `<span style="color: var(--ink-faint); font-size: 12px;">—</span>`;
+
+    html += `
+      <tr style="background: ${rowBg}; font-weight: ${fontWeight};">
+        <td style="${tdStyle} color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; white-space: nowrap; border-left: ${leftAccent};">${(r.n !== null && r.n !== undefined) ? r.n : '—'}</td>
+        <td style="${tdStyle} color: var(--ink-faint); white-space: nowrap;">${(r.level !== null && r.level !== undefined) ? r.level : '—'}</td>
+        <td style="${tdStyle} text-align: left; color: var(--ink-faint); white-space: nowrap;">${r.wbs || '—'}</td>
+        <td style="${tdStyle} text-align: left; padding-left: ${12 + Math.max(0, r.level - 1) * 12}px; white-space: normal; line-height: 1.4;" title="${r.actividad}">${r.actividad}</td>
+        <td style="${tdStyle} color: var(--ink-faint); white-space: nowrap;">${r.tipo || '—'}</td>
+        <td style="${tdStyle} color: var(--ink-faint); white-space: nowrap;">${fmtDateDDMMYYYY(r.inicio)}</td>
+        <td style="${tdStyle} color: var(--ink-faint); white-space: nowrap;">${fmtDateDDMMYYYY(r.fin)}</td>
+        <td style="${tdStyle} color: var(--ink-dim); white-space: nowrap;">${progNum === null ? '—' : Math.round(progNum) + '%'}</td>
+        <td style="${tdStyle} white-space: nowrap;">${avanceSemanalPill(Math.round(realNum) + '%', COL_REAL, 'rgba(61,122,139,0.13)')}</td>
+        <td style="${tdStyle} white-space: nowrap;">${avanceSemanalPill(diffTxt, diffColor, diffBg)}</td>
+        <td style="${tdStyle} white-space: nowrap;">${nuevoRealCell}</td>
+        <td style="${tdStyle} white-space: nowrap;">${updateCell}</td>
+      </tr>
+    `;
+  });
+
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function renderAvanceSemanal(){
+  const empty = document.getElementById('avanceSemanalEmpty');
+  const content = document.getElementById('avanceSemanalContent');
+  const hasProjects = PROJECTS && PROJECTS.length > 0;
+
+  if(empty) empty.style.display = hasProjects ? 'none' : 'block';
+  if(content) content.style.display = hasProjects ? 'block' : 'none';
+  if(!hasProjects) return;
+
+  if(selectedProjectIdx === null && PROJECTS.length > 0) selectedProjectIdx = 0;
+  const proj = PROJECTS[selectedProjectIdx] || PROJECTS[0];
+
+  const input = document.getElementById('avanceSemanalCutoffInput');
+  if(input){
+    if(!avanceSemanalCutoffDate){
+      avanceSemanalCutoffDate = defaultCutoffDate();
+    }
+    if(avanceSemanalCutoffDate) input.value = toISODate(avanceSemanalCutoffDate);
+  }
+  updateAvanceSemanalCutoffDisplay();
+
+  const body = document.getElementById('avanceSemanalBody');
+  if(body) body.innerHTML = buildAvanceSemanalTable(proj);
+}
+
+function exportAvanceSemanalExcel(){
+  if(typeof XLSX === 'undefined'){
+    alert('No se pudo exportar: la librería de Excel no está cargada.');
+    return;
+  }
+  if(selectedProjectIdx === null && PROJECTS.length > 0) selectedProjectIdx = 0;
+  const proj = PROJECTS[selectedProjectIdx] || PROJECTS[0];
+  if(!proj || !proj.ganttRows || !proj.ganttRows.length){
+    alert('No hay actividades para exportar.');
+    return;
+  }
+
+  // El nivel más profundo (hoja) se calcula sobre TODAS las actividades del
+  // proyecto (sin filtrar por "Actualizar"), igual que en la tabla en pantalla.
+  const maxLevel = avanceSemanalMaxLevel(proj.ganttRows);
+  let rows = avanceSemanalSortRows(proj.ganttRows);
+
+  // Se calcula "% Línea Base" / "¿necesita actualizar?" ANTES de aplicar el
+  // filtro "Actualizar" (mismo orden que en pantalla), y se aplica el mismo
+  // filtro activo en la tabla, para que el Excel exportado coincida con lo
+  // que el usuario está viendo en ese momento.
+  let rowsWithMeta = rows.map(r => {
+    const estProg = calculateEstimatedProgress(r, avanceSemanalCutoffDate);
+    const progNum = estProg === null ? null : estProg * 100;
+    const isLeaf = r.level >= maxLevel;
+    // "Actualizar" solo tiene sentido en el ÚLTIMO nivel (hoja) — mismo
+    // criterio que en pantalla.
+    const needsUpdate = isLeaf && progNum !== null && progNum > 0;
+    return { r, progNum, needsUpdate, isLeaf };
+  });
+  if(avanceSemanalActualizarFilter === 'si') rowsWithMeta = rowsWithMeta.filter(x => x.needsUpdate);
+  else if(avanceSemanalActualizarFilter === 'no') rowsWithMeta = rowsWithMeta.filter(x => !x.needsUpdate);
+
+  if(!rowsWithMeta.length){
+    alert('No hay actividades que coincidan con el filtro "Actualizar" para exportar.');
+    return;
+  }
+
+  const header = ['N', 'WBS', 'Actividad', 'Tipo', 'Inicio', 'Fin', '% Línea Base', '% Real', '% Diferencia', 'Nuevo % Real', 'Actualizar'];
+  const aoa = [header];
+  const PCT_COLS = [6, 7, 8, 9]; // % Línea Base, % Real, % Diferencia, Nuevo % Real -> se exportan con formato % nativo
+  const numCols = header.length;
+
+  // Mezcla el tinte "vino" (192,0,0) con blanco al porcentaje de opacidad dado,
+  // para obtener el mismo color pero como color SÓLIDO (Excel no soporta el
+  // "rgba" translúcido de la pantalla). Reproduce en Excel el mismo degradé
+  // por nivel que se ve en pantalla (más fuerte cuanto más alto es el nivel).
+  const mixWithWhite = (alpha) => {
+    const mix = (base) => Math.round(255 * (1 - alpha) + base * alpha);
+    const toHex = (n) => n.toString(16).toUpperCase().padStart(2, '0');
+    return 'FF' + toHex(mix(192)) + toHex(mix(0)) + toHex(mix(0));
+  };
+
+  // Fondo de cada fila de datos, igual que en pantalla: los niveles SUPERIORES
+  // (todos menos el último/hoja) llevan el tinte "vino" (más fuerte en el
+  // Nivel 1); el último nivel (hoja) NO lleva ningún color de fondo (ni
+  // siquiera zebra-striping), para que quede sin pintar tal como se pidió.
+  // También se guarda si la fila es Nivel 1, para ponerla en negrita.
+  const rowFills = [];
+  const rowBold = [];
+
+  rowsWithMeta.forEach(({ r, progNum, needsUpdate, isLeaf }) => {
+    const key = avanceSemanalRowKey(proj.name, r);
+    const realNum = entregablePctRealNum(r);
+    const diffNum = progNum === null ? null : (realNum - progNum);
+    const nuevoVal = (avanceSemanalOverrides[key] !== undefined) ? avanceSemanalOverrides[key] : Math.round(realNum);
+
+    if(isLeaf){
+      rowFills.push(null);
+      rowBold.push(false);
+    } else if(r.level === 0){
+      // Nivel 0 (total general): color propio, más fuerte que el resto,
+      // igual que en pantalla.
+      rowFills.push(mixWithWhite(0.16));
+      rowBold.push(true);
+    } else {
+      const tintAlpha = Math.min(0.09, 0.09 / r.level);
+      rowFills.push(mixWithWhite(tintAlpha));
+      rowBold.push(r.level === 1);
+    }
+
+    aoa.push([
+      (r.n !== null && r.n !== undefined) ? r.n : '',
+      r.wbs || '',
+      r.actividad || '',
+      r.tipo || '',
+      fmtDateDDMMYYYY(r.inicio),
+      fmtDateDDMMYYYY(r.fin),
+      progNum === null ? '' : Math.round(progNum),
+      Math.round(realNum),
+      diffNum === null ? '' : Math.round(diffNum),
+      isLeaf ? Math.round(nuevoVal) : '',
+      needsUpdate ? 'Actualizar' : 'No actualizar'
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{ wch: 6 }, { wch: 10 }, { wch: 60 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 12 }];
+
+  // Formato de porcentaje nativo de Excel (sin decimales) para las columnas %:
+  // se guarda el valor como fracción (0-1) y se marca el formato de celda "0%",
+  // así Excel las trata como porcentajes reales (no como texto "50%").
+  for(let ri = 1; ri < aoa.length; ri++){
+    PCT_COLS.forEach(ci => {
+      const raw = aoa[ri][ci];
+      if(raw === '' || raw === null || raw === undefined) return;
+      const cellRef = XLSX.utils.encode_cell({ r: ri, c: ci });
+      const cell = ws[cellRef];
+      if(cell){
+        cell.v = raw / 100;
+        cell.t = 'n';
+        cell.z = '0%';
+      }
+    });
+  }
+
+  // Formato visual (color de fila y cabecera) igual que en pantalla. Requiere
+  // que la librería de Excel cargada soporte escribir estilos de celda
+  // ("cellStyles"); si no los soporta, estas líneas simplemente no tienen
+  // efecto visible y el archivo se genera igual, sin colores.
+  const HEADER_FILL = 'FF1B3A50'; // mismo azul oscuro del encabezado en pantalla
+  for(let c = 0; c < numCols; c++){
+    const ref = XLSX.utils.encode_cell({ r: 0, c });
+    if(ws[ref]){
+      ws[ref].s = {
+        fill: { patternType: 'solid', fgColor: { rgb: HEADER_FILL } },
+        font: { color: { rgb: 'FFFFFFFF' }, bold: true },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      };
+    }
+  }
+  rowFills.forEach((fillHex, i) => {
+    const ri = i + 1; // +1 porque la fila 0 es la cabecera
+    const bold = rowBold[i];
+    if(!fillHex && !bold) return;
+    for(let c = 0; c < numCols; c++){
+      const ref = XLSX.utils.encode_cell({ r: ri, c });
+      if(!ws[ref]) continue;
+      ws[ref].s = Object.assign({}, ws[ref].s, {
+        fill: fillHex ? { patternType: 'solid', fgColor: { rgb: fillHex } } : undefined,
+        font: bold ? { bold: true } : undefined
+      });
+    }
+  });
+
+  const wb = XLSX.utils.book_new();
+  const sheetName = String(proj.name || 'Avance Semanal').replace(/[:\\\/\?\*\[\]]/g, ' ').trim().substring(0, 31) || 'Avance Semanal';
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+  const today = new Date();
+  const stamp = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+  const fileName = `Avance_Semanal_${stamp}.xlsx`;
+  XLSX.writeFile(wb, fileName, { cellStyles: true });
+  return fileName;
+}
+
 function buildGanttChart(proj){
   // Mostrar solo actividades del proyecto actual
   const allRows = proj.ganttRows || [];
@@ -2289,19 +2858,27 @@ function buildGanttChart(proj){
 
 /* ================= Responsable Gantt (grouped by person) ================= */
 
-function buildResponsableGanttChart(projects, responsableFilter = ''){
+function buildResponsableGanttChart(projects, responsableFilter = '', searchText = ''){
   // Agrupar todas las actividades de todos los proyectos por responsable
   const activitiesByResponsable = {};
   const allProjects = projects.length > 0 ? projects : [];
-  
+  const searchNorm = (searchText || '').trim().toLowerCase();
+
   allProjects.forEach(proj => {
     if(proj.ganttRows){
       proj.ganttRows.forEach(r => {
         const resp = r.responsable || '—';
-        
-        // Aplicar filtro de responsable si existe
-        if(responsableFilter && resp !== responsableFilter) return;
-        
+
+        // Aplicar filtro de responsable si existe (acepta tanto el valor
+        // combinado, ej. "KR/VR", como un nombre individual ya separado)
+        if(!respFilterMatches(resp, responsableFilter)) return;
+
+        // Aplicar buscador de texto — SOLO por actividad/entregable
+        if(searchNorm){
+          const haystack = `${r.actividad || ''}`.toLowerCase();
+          if(!haystack.includes(searchNorm)) return;
+        }
+
         if(!activitiesByResponsable[resp]){
           activitiesByResponsable[resp] = [];
         }
@@ -2312,7 +2889,8 @@ function buildResponsableGanttChart(projects, responsableFilter = ''){
 
   const responsables = Object.keys(activitiesByResponsable).sort();
   if(!responsables.length){
-    return `<div class="gantt-empty">No se encontraron actividades${responsableFilter ? ` para ${responsableFilter}` : ''}.</div>`;
+    const reason = searchNorm ? ` para "${searchText}"` : (responsableFilter ? ` para ${responsableFilter}` : '');
+    return `<div class="gantt-empty">No se encontraron actividades${reason}.</div>`;
   }
 
   // Calcular escala de tiempo global
@@ -2463,10 +3041,10 @@ function buildDisciplinaGanttChart(projects, responsableFilter = ''){
     if(proj.ganttRows){
       proj.ganttRows.forEach(r => {
         const resp = r.responsable || '—';
-        
-        // Aplicar filtro de responsable si existe
-        if(responsableFilter && resp !== responsableFilter) return;
-        
+
+        // Aplicar filtro de responsable si existe (combinado o individual)
+        if(!respFilterMatches(resp, responsableFilter)) return;
+
         const disc = r.disciplina || 'Sin Disciplina';
         if(!activitiesByDisciplina[disc]){
           activitiesByDisciplina[disc] = [];
@@ -2631,6 +3209,8 @@ function setPage(page){
   // Renderizar contenido específico
   if(page === 'tracking') {
     renderTracking();
+  } else if(page === 'avance_semanal') {
+    renderAvanceSemanal();
   } else if(page === 'responsables') {
     renderResponsables();
   } else if(page === 'entregables') {
@@ -2660,6 +3240,10 @@ function updateHeader(){
   } else if(currentPage === 'tracking'){
     title.textContent = 'Curva S';
     sub.textContent = hasProjects ? `${PROJECTS.length} proyecto(s) cargado(s) · fecha de corte: ${dateTxt}` : 'Aún no has importado ningún proyecto.';
+  } else if(currentPage === 'avance_semanal'){
+    title.textContent = 'Ingrese % avance';
+    const avanceCutTxt = avanceSemanalCutoffDate ? fmtDate(avanceSemanalCutoffDate.toISOString()) : '—';
+    sub.textContent = hasProjects ? `${PROJECTS.length} proyecto(s) cargado(s) · fecha de corte: ${avanceCutTxt}` : 'Aún no has importado ningún proyecto.';
   } else if(currentPage === 'responsables'){
     title.textContent = 'Cronograma por Responsable';
     sub.textContent = hasProjects ? `${PROJECTS.length} proyecto(s) · fecha de corte: ${dateTxt}` : 'Aún no has importado ningún proyecto.';
@@ -3163,6 +3747,105 @@ function buildResponsableCalendar(projects, responsableFilter = ''){
 
 /* ================= Calendar by Responsable ================= */
 
+// Normaliza un nombre de responsable (espacios extra) para comparar/agrupar.
+function canonRespName(s){
+  return String(s || '').trim().replace(/\s+/g, ' ');
+}
+
+// true si "rawResp" (que puede traer varios nombres, ej. "KR/VR") coincide
+// con el filtro elegido, ya sea como texto completo o como uno de sus
+// nombres individuales — así el filtro superior funciona igual si se elige
+// el valor combinado ("KR/VR") o un nombre ya separado ("KR").
+function respFilterMatches(rawResp, filterValue){
+  if(!filterValue) return true;
+  const filterKey = canonRespName(filterValue).toLowerCase();
+  const rawKey = canonRespName(rawResp).toLowerCase();
+  if(rawKey === filterKey) return true;
+  return String(rawResp || '').split('/').map(canonRespName).some(n => n.toLowerCase() === filterKey);
+}
+
+// Recolecta actividades/entregables agrupados por responsable, para usar en
+// "Calendario por Responsable (Todo)" y en el export a Excel de esa pestaña
+// y de "Cronograma por Responsable".
+// - Duplica las actividades con varios responsables (ej. "KR/VR") en el
+//   calendario de cada uno.
+// - Normaliza espacios y mayúsculas/minúsculas al agrupar, para que una
+//   misma persona no quede repartida en varias tarjetas por una diferencia
+//   de tipeo en el Excel (ej. "AT" vs "At " vs "A T"); se muestra la forma
+//   de escritura más usada.
+// - NO excluye las filas de resumen de WBS (nivel 1): si tienen responsable
+//   y fechas propias, se incluyen igual que en los demás Gantt de la app
+//   (que las muestran como barra de grupo en vez de ocultarlas).
+// - La búsqueda de texto es SOLO por actividad/entregable (no por responsable).
+function collectActivitiesByResponsable(projects, opts = {}){
+  const responsableFilter = opts.responsableFilter || '';
+  const searchText = (opts.searchText || '').trim().toLowerCase();
+  const splitMultiResp = opts.splitMultiResp !== false;
+  const allProjects = projects && projects.length > 0 ? projects : [];
+
+  const canon = canonRespName;
+  const canonLower = s => canon(s).toLowerCase();
+  const filterKey = responsableFilter ? canonLower(responsableFilter) : '';
+
+  const byKey = {};        // canonKey -> [items]
+  const labelCounts = {};  // canonKey -> {texto: veces_visto}
+  const uniqueProjects = new Set();
+
+  allProjects.forEach(proj => {
+    if(!proj.ganttRows) return;
+    proj.ganttRows.forEach(r => {
+      const tipoStr = r.tipo ? String(r.tipo).trim() : '';
+      const rawResp = r.responsable ? String(r.responsable).trim() : '';
+      if(!rawResp || rawResp === '—') return; // sin responsable asignado
+      if(!r.inicio || !r.fin) return;
+
+      const isEntregavel = (
+        tipoStr === 'Entregável' ||
+        tipoStr === 'Entregavel' ||
+        tipoStr.toUpperCase() === 'ENTREGÁVEL' ||
+        tipoStr.toUpperCase() === 'ENTREGAVEL'
+      );
+
+      let respNames = splitMultiResp
+        ? rawResp.split('/').map(s => canon(s)).filter(Boolean)
+        : [canon(rawResp)];
+      if(!respNames.length) respNames = [canon(rawResp)];
+
+      respNames.forEach(respName => {
+        const key = canonLower(respName);
+        if(filterKey && canonLower(rawResp) !== filterKey && key !== filterKey) return;
+
+        if(searchText){
+          const haystack = `${r.actividad || ''}`.toLowerCase();
+          if(!haystack.includes(searchText)) return;
+        }
+
+        if(!byKey[key]) byKey[key] = [];
+        if(!labelCounts[key]) labelCounts[key] = {};
+        labelCounts[key][respName] = (labelCounts[key][respName] || 0) + 1;
+
+        byKey[key].push({...r, responsable: respName, responsableOriginal: rawResp, isEntregavel, projectName: proj.name});
+        uniqueProjects.add(proj.name);
+      });
+    });
+  });
+
+  // Por cada persona, usar como etiqueta la variante de escritura más frecuente.
+  const byResp = {};
+  Object.keys(byKey).forEach(key => {
+    const variants = labelCounts[key];
+    let best = key, bestCount = -1;
+    Object.keys(variants).forEach(v => { if(variants[v] > bestCount){ best = v; bestCount = variants[v]; } });
+    byResp[best] = byKey[key];
+  });
+
+  return {
+    responsables: Object.keys(byResp).sort((a, b) => a.localeCompare(b)),
+    byResp,
+    uniqueProjects
+  };
+}
+
 function buildCalendarByResponsable(projects, responsableFilter = ''){
   console.log(`🔍 buildCalendarByResponsable: responsableFilter="${responsableFilter}"`);
   
@@ -3187,13 +3870,13 @@ function buildCalendarByResponsable(projects, responsableFilter = ''){
         if(!isEntregavel) return;
         
         const resp = r.responsable || '—';
-        
-        // Aplicar filtro de responsable si existe
-        if(responsableFilter && resp !== responsableFilter) {
+
+        // Aplicar filtro de responsable si existe (combinado o individual)
+        if(!respFilterMatches(resp, responsableFilter)) {
           console.log(`   SKIP: ${resp} !== ${responsableFilter}`);
           return;
         }
-        
+
         console.log(`   ✓ Incluído: ${resp}`);
         
         if(!activitiesByResponsable[resp]){
@@ -3354,6 +4037,255 @@ Proyecto: ${a.projectName}">
   
   calendarHtml += '</div>';
   return calendarHtml;
+}
+
+// Igual que buildCalendarByResponsable, pero considera TODAS las actividades
+// (no solo Entregáveis) en cada día de su rango [inicio, fin], incluye un
+// buscador por texto y duplica las actividades cuyo campo Responsable trae
+// varios nombres (ej. "KR/VR") en el calendario de cada responsable individual.
+function buildCalendarCompletoByResponsable(projects, responsableFilter = '', searchText = ''){
+  const { responsables, byResp: activitiesByResponsable, uniqueProjects } = collectActivitiesByResponsable(projects, { responsableFilter, searchText, splitMultiResp: true });
+  const allProjects = projects.length > 0 ? projects : [];
+
+  if(!responsables.length){
+    const reason = searchText ? ` para "${searchText}"` : (responsableFilter ? ` para ${responsableFilter}` : '');
+    return `<div style="padding: 20px; text-align: center; color: var(--ink-faint);">No hay actividades ni entregables${reason} para mostrar.</div>`;
+  }
+
+  let calendarHtml = '<div style="display: flex; flex-direction: column; gap: 24px; padding: 16px;">';
+
+  calendarHtml += `<div style="background: var(--panel); padding: 10px 16px; border: 1px solid var(--grid); border-radius: 6px; font-size: 12px; color: var(--ink-dim); display: flex; gap: 18px; align-items: center; flex-wrap: wrap;">
+    <span>📦 Entregable</span>
+    <span>🔧 Actividad</span>
+    <span style="color: var(--ink-faint);">Cada día muestra lo que está activo entre su fecha de inicio y de fin.</span>
+  </div>`;
+
+  if(uniqueProjects.size > 1){
+    calendarHtml += `<div style="background: var(--panel); padding: 12px 16px; border: 1px solid var(--grid); border-radius: 6px;">
+      <div style="font-weight: 600; color: var(--ink-dim); margin-bottom: 8px; font-size: 12px;">Leyenda de Proyectos:</div>
+      <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+        ${Array.from(uniqueProjects).sort().map(proj => {
+          let projCod = proj;
+          const projObj = allProjects.find(p => p.name === proj);
+          if(projObj && projObj.ganttRows && projObj.ganttRows.length > 0){
+            const firstCod = projObj.ganttRows[0].cod;
+            if(firstCod && firstCod !== '—'){
+              projCod = firstCod;
+            }
+          }
+          const bgColor = getProjectColor(proj);
+          return `<div style="display: flex; align-items: center; gap: 6px;">
+            <div style="width: 12px; height: 12px; background: ${bgColor}; border: 1px solid var(--real); border-radius: 2px;"></div>
+            <span style="font-size: 11px; color: var(--ink-dim);">${projCod}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  responsables.forEach(resp => {
+    const activities = activitiesByResponsable[resp];
+    const respBgColor = getResponsableColor(resp);
+
+    let allDates = activities.flatMap(a => [new Date(a.inicio).getTime(), new Date(a.fin).getTime()]);
+    const minTime = Math.min(...allDates);
+    const maxTime = Math.max(...allDates);
+
+    // Misma lógica de anclaje de semana (lunes) que buildCalendarByResponsable,
+    // con aritmética de fecha en UTC (ver nota de esa función sobre Perú/UTC-5).
+    const projectStart = new Date('2026-09-07T00:00:00Z');
+    const firstMondayOfSept = new Date(projectStart);
+    const dayOfWeek = firstMondayOfSept.getUTCDay();
+    firstMondayOfSept.setUTCDate(firstMondayOfSept.getUTCDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+    const startDate = minTime < projectStart.getTime() ? firstMondayOfSept : new Date(minTime);
+    const adjustedStart = new Date(startDate);
+    const dayAdj = adjustedStart.getUTCDay();
+    adjustedStart.setUTCDate(adjustedStart.getUTCDate() - (dayAdj === 0 ? 6 : dayAdj - 1));
+
+    const entregablesCount = activities.filter(a => a.isEntregavel).length;
+    const actividadesCount = activities.length - entregablesCount;
+
+    calendarHtml += `<div style="border: 2px solid; border-color: ${respBgColor}; border-radius: 8px; overflow: hidden;">
+      <div style="background: ${respBgColor}; padding: 14px 16px; font-weight: 600; color: var(--ink); border-bottom: 2px solid var(--real);">
+        📆 ${resp} (${actividadesCount} actividades, ${entregablesCount} entregables)
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px; padding: 16px;">`;
+
+    let currentDate = new Date(adjustedStart);
+    while(currentDate.getTime() <= maxTime){
+      const weekStart = new Date(currentDate);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+
+      const weekLabel = `${fmtDate(weekStart.toISOString())} — ${fmtDate(weekEnd.toISOString())}`;
+
+      calendarHtml += `<div style="border: 1px solid var(--grid); border-radius: 6px; overflow: hidden;">
+        <div style="background: var(--panel-2); padding: 10px 12px; font-size: 12px; font-weight: 500; color: var(--ink-dim);">
+          📅 ${weekLabel}
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(7, minmax(100px, 1fr)); gap: 1px; background: var(--grid); padding: 1px;">`;
+
+      const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+      const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      dayNames.forEach((dayName, dayIdx) => {
+        const dayDate = new Date(weekStart);
+        dayDate.setUTCDate(dayDate.getUTCDate() + dayIdx);
+        const dayYMD = dateToYMD(dayDate.toISOString());
+
+        // A diferencia de buildCalendarByResponsable (que solo muestra el
+        // entregable en su fecha FIN), aquí se muestra CUALQUIER actividad o
+        // entregable cuyo rango [inicio, fin] incluya este día.
+        const dayActivities = activities.filter(a => {
+          const aStartYMD = dateToYMD(a.inicio);
+          const aEndYMD = dateToYMD(a.fin);
+          return aStartYMD <= dayYMD && dayYMD <= aEndYMD;
+        });
+
+        const dayNum = dayDate.getUTCDate();
+        const monthIdx = dayDate.getUTCMonth();
+        const monthName = meses[monthIdx];
+
+        calendarHtml += `<div style="background: white; padding: 8px; min-height: 100px; border: 1px solid var(--grid); display: flex; flex-direction: column;">
+          <div style="font-weight: 600; font-size: 11px; color: var(--ink); margin-bottom: 4px; white-space: nowrap;">
+            ${dayName} ${dayNum} ${monthName}
+          </div>
+          <div style="font-size: 9px; line-height: 1.3; flex: 1; overflow-y: auto;">
+            ${dayActivities.length > 0
+              ? dayActivities.map(a => {
+                const projColor = getProjectColor(a.projectName);
+                const icon = a.isEntregavel ? '📦' : '🔧';
+                const borderColor = a.isEntregavel ? '#c9971f' : 'var(--real)';
+                const respTag = a.responsableOriginal && a.responsableOriginal !== a.responsable ? ` (${a.responsableOriginal})` : '';
+                return `
+                <div style="background: ${projColor}; padding: 3px 4px; border-radius: 2px; margin-bottom: 3px; border-left: 2px solid ${borderColor}; cursor: help;" title="${icon} ${a.actividad}
+Responsable: ${a.responsableOriginal || a.responsable}
+Proyecto: ${a.projectName}">
+                  <div style="font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 9px;">${icon} ${a.actividad}${respTag}</div>
+                </div>
+              `;
+              }).join('')
+              : '<div style="color: var(--ink-faint); font-size: 9px;">—</div>'
+            }
+          </div>
+        </div>`;
+      });
+
+      calendarHtml += `</div></div>`;
+
+      currentDate.setUTCDate(currentDate.getUTCDate() + 7);
+    }
+
+    calendarHtml += `</div></div>`;
+  });
+
+  calendarHtml += '</div>';
+  return calendarHtml;
+}
+
+// Exporta a Excel (una hoja por responsable) qué actividades/entregables le
+// tocan en cada día de su rango [inicio, fin]. Se usa desde "Cronograma por
+// Responsable" y desde "Calendario por Responsable (Todo)" — mismo formato,
+// solo cambia el filtro/búsqueda ya aplicados en cada pestaña.
+function exportActivitiesByResponsableExcel(projects, responsableFilter, searchText, fileNameBase){
+  if(typeof XLSX === 'undefined'){
+    alert('No se pudo exportar: la librería de Excel no está cargada.');
+    return;
+  }
+
+  const { responsables, byResp } = collectActivitiesByResponsable(projects, { responsableFilter, searchText, splitMultiResp: true });
+
+  if(!responsables.length){
+    alert('No hay actividades para exportar' + (searchText ? ` con "${searchText}"` : (responsableFilter ? ` para ${responsableFilter}` : '')) + '.');
+    return;
+  }
+
+  const fmtDDMMYYYY = fmtDateDDMMYYYY;
+  const HEADER_ROW = ['Inicio', 'Fin', 'Responsable', 'Actividad', 'Tipo', 'Código', 'Proyecto'];
+
+  const mondayOf = d => {
+    const dow = d.getUTCDay();
+    const dowMon0 = (dow + 6) % 7; // reordenado a Lun=0..Dom=6
+    const m = new Date(d);
+    m.setUTCDate(m.getUTCDate() - dowMon0);
+    return m;
+  };
+
+  const wb = XLSX.utils.book_new();
+  const usedSheetNames = new Set();
+
+  responsables.forEach(resp => {
+    const items = byResp[resp];
+
+    // Una fila por actividad en cada semana (lunes a domingo) que toca su
+    // rango [inicio, fin] — no una fila por día, para no repetir la misma
+    // actividad varias veces dentro de una misma semana.
+    const rowsByWeek = {}; // "YYYY-MM-DD" del lunes -> { weekStart, rows: [] }
+
+    items.forEach(a => {
+      const start = parseUTCDate(a.inicio);
+      const end = parseUTCDate(a.fin);
+      if(!start || !end) return;
+
+      const row = {
+        inicio: fmtDDMMYYYY(start),
+        fin: fmtDDMMYYYY(end),
+        actividad: a.actividad || '',
+        tipo: a.isEntregavel ? 'Entregable' : 'Actividad',
+        cod: a.cod || '',
+        proyecto: a.projectName || '',
+        _sortKey: dateToYMD(start.toISOString())
+      };
+
+      let weekCursor = mondayOf(start);
+      const lastWeekMonday = mondayOf(end);
+      while(weekCursor.getTime() <= lastWeekMonday.getTime()){
+        const weekKey = dateToYMD(weekCursor.toISOString());
+        if(!rowsByWeek[weekKey]) rowsByWeek[weekKey] = { weekStart: new Date(weekCursor), rows: [] };
+        rowsByWeek[weekKey].rows.push(row);
+        weekCursor.setUTCDate(weekCursor.getUTCDate() + 7);
+      }
+    });
+
+    const weekKeys = Object.keys(rowsByWeek).sort();
+    const aoa = [];
+    const merges = [];
+
+    weekKeys.forEach(weekKey => {
+      const { weekStart, rows } = rowsByWeek[weekKey];
+      const weekEnd = new Date(weekStart);
+      weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+
+      merges.push({ s: { r: aoa.length, c: 0 }, e: { r: aoa.length, c: HEADER_ROW.length - 1 } });
+      aoa.push([`Semana: ${fmtDDMMYYYY(weekStart)} — ${fmtDDMMYYYY(weekEnd)}`]);
+      aoa.push(HEADER_ROW.slice());
+
+      rows.sort((r1, r2) => r1._sortKey.localeCompare(r2._sortKey) || r1.actividad.localeCompare(r2.actividad));
+      rows.forEach(r => {
+        aoa.push([r.inicio, r.fin, resp, r.actividad, r.tipo, r.cod, r.proyecto]);
+      });
+
+      aoa.push([]); // fila en blanco entre semanas
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 60 }, { wch: 12 }, { wch: 10 }, { wch: 24 }];
+    if(merges.length) ws['!merges'] = merges;
+
+    let sheetName = String(resp).replace(/[:\\\/\?\*\[\]]/g, ' ').trim().substring(0, 31) || 'Responsable';
+    let uniqueName = sheetName, n = 2;
+    while(usedSheetNames.has(uniqueName.toLowerCase())){
+      uniqueName = (sheetName.substring(0, 28) + '_' + n).substring(0, 31);
+      n++;
+    }
+    usedSheetNames.add(uniqueName.toLowerCase());
+
+    XLSX.utils.book_append_sheet(wb, ws, uniqueName);
+  });
+
+  const today = new Date();
+  const stamp = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+  XLSX.writeFile(wb, `${fileNameBase}_${stamp}.xlsx`);
 }
 
 /* ================= Responsables page content ================= */
@@ -4513,6 +5445,44 @@ document.addEventListener('click', e => {
   }
 });
 
+// Pestañas de Responsables que tienen buscador + "Exportar Excel" propios en
+// la barra compartida (las otras dos, "Cronograma por Disciplina" y
+// "Responsable por Entregable", no lo pidieron).
+const RESP_TABS_CON_BUSCADOR = ['resp-gantt', 'resp-calendar-completo'];
+
+function setActiveResponsablesSubTab(tab){
+  activeResponsablesSubTab = tab;
+  updateResponsablesToolbar();
+}
+
+function onRespToolbarSearchInput(value){
+  const v = (value || '').toLowerCase();
+  if(activeResponsablesSubTab === 'resp-gantt') cronogramaRespSearchText = v;
+  else if(activeResponsablesSubTab === 'resp-calendar-completo') calendarCompletoSearchText = v;
+  renderResponsables();
+}
+
+function exportRespToolbar(){
+  if(activeResponsablesSubTab === 'resp-gantt'){
+    exportActivitiesByResponsableExcel(PROJECTS, selectedResponsableFilter, cronogramaRespSearchText, 'Cronograma_por_Responsable');
+  } else if(activeResponsablesSubTab === 'resp-calendar-completo'){
+    exportActivitiesByResponsableExcel(PROJECTS, selectedResponsableFilter, calendarCompletoSearchText, 'Calendario_por_Responsable');
+  }
+}
+
+function updateResponsablesToolbar(){
+  const wrap = document.getElementById('respToolbarSearchExport');
+  const input = document.getElementById('respToolbarSearchInput');
+  if(!wrap || !input) return;
+
+  if(RESP_TABS_CON_BUSCADOR.includes(activeResponsablesSubTab)){
+    wrap.style.display = 'flex';
+    input.value = activeResponsablesSubTab === 'resp-gantt' ? cronogramaRespSearchText : calendarCompletoSearchText;
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
 function renderResponsables(){
   const empty = document.getElementById('responsablesEmpty');
   const content = document.getElementById('responsablesContent');
@@ -4558,6 +5528,8 @@ function renderResponsables(){
     window.respFilterChangeHandler = (e) => {
       console.log(`📋 Filtro de responsable cambió a: "${e.target.value}"`);
       selectedResponsableFilter = e.target.value;
+      const respFilterUnico = document.getElementById('responsableFilterUnico');
+      if(respFilterUnico) respFilterUnico.value = '';
       renderResponsables();
     };
     
@@ -4565,10 +5537,35 @@ function renderResponsables(){
     respFilter.addEventListener('change', window.respFilterChangeHandler);
   }
 
+  // Poblar el segundo select: responsables ÚNICOS e individuales (separa
+  // "KR/VR" en "KR" y "VR", sin repetidos por mayúsculas/espacios distintos)
+  const respFilterUnico = document.getElementById('responsableFilterUnico');
+  if(respFilterUnico) {
+    const { responsables: responsablesUnicos } = collectActivitiesByResponsable(PROJECTS, {});
+    const currentValueUnico = respFilterUnico.value;
+    respFilterUnico.innerHTML = '<option value="">— Todos —</option>';
+    responsablesUnicos.forEach(resp => {
+      const opt = document.createElement('option');
+      opt.value = resp;
+      opt.textContent = resp;
+      respFilterUnico.appendChild(opt);
+    });
+    respFilterUnico.value = currentValueUnico;
+
+    respFilterUnico.removeEventListener('change', window.respFilterUnicoChangeHandler);
+    window.respFilterUnicoChangeHandler = (e) => {
+      selectedResponsableFilter = e.target.value;
+      // Limpiar el otro select para no dejar dos filtros con valores distintos a la vista
+      if(respFilter) respFilter.value = '';
+      renderResponsables();
+    };
+    respFilterUnico.addEventListener('change', window.respFilterUnicoChangeHandler);
+  }
+
   // Renderizar responsables con filtro aplicado
   try {
     if(document.getElementById('respGanttBody')) {
-      document.getElementById('respGanttBody').innerHTML = buildResponsableGanttChart(PROJECTS, selectedResponsableFilter);
+      document.getElementById('respGanttBody').innerHTML = buildResponsableGanttChart(PROJECTS, selectedResponsableFilter, cronogramaRespSearchText);
     }
     if(document.getElementById('respGanttDisciplinaBody')) {
       document.getElementById('respGanttDisciplinaBody').innerHTML = buildDisciplinaGanttChart(PROJECTS, selectedResponsableFilter);
@@ -4579,9 +5576,13 @@ function renderResponsables(){
     if(document.getElementById('respCalendarByPersonBody')) {
       document.getElementById('respCalendarByPersonBody').innerHTML = buildCalendarByResponsable(PROJECTS, selectedResponsableFilter);
     }
+    if(document.getElementById('respCalendarCompletoBody')) {
+      document.getElementById('respCalendarCompletoBody').innerHTML = buildCalendarCompletoByResponsable(PROJECTS, selectedResponsableFilter, calendarCompletoSearchText);
+    }
     if(document.getElementById('navRespCount')) {
       document.getElementById('navRespCount').textContent = PROJECTS.length;
     }
+    updateResponsablesToolbar();
     // Inicializar resize de columnas después de renderizar
     setTimeout(() => initColumnResizing(), 50);
   } catch(e) {
@@ -4919,6 +5920,7 @@ function render(){
   if(!PROJECTS.length) selectedProjectIdx = null;
 
   renderTracking();
+  renderAvanceSemanal();
   renderGanttPage();
   renderResponsables();
   renderEntregables();
@@ -4972,6 +5974,14 @@ document.getElementById('cutoffInput').addEventListener('change', e => {
 
 document.getElementById('cutoffInput').addEventListener('input', () => {
   updateCutoffDateDisplay();
+});
+
+// Fecha de corte propia de "Avance Semanal" (independiente de la de "Curva S"),
+// solo re-renderiza esa ventana — no afecta al resto de la app.
+document.getElementById('avanceSemanalCutoffInput').addEventListener('change', e => {
+  const isoValue = e.target.value;
+  avanceSemanalCutoffDate = isoValue ? parseISODateOnly(isoValue) : null;
+  renderAvanceSemanal();
 });
 
 // El filtro de rango de fechas de la ventana "Diagrama de Gantt" ahora es la
