@@ -340,6 +340,24 @@ function setupTabButtons(){
   }
   .tabs-body{padding:22px; width: 100%; box-sizing: border-box; display: block;}
 
+  .edp-card{background:var(--panel); border:1px solid var(--grid); border-radius:8px; margin-bottom:22px; overflow:hidden; box-shadow:var(--shadow);}
+  .edp-card-h{background:var(--panel-2); padding:12px 16px; font-weight:600; color:var(--ink); font-size:14px; border-bottom:1px solid var(--grid);}
+  .edp-card-b{padding:16px;}
+  .edp-chart{height:320px;}
+  .edp-chart svg{display:block; width:100%; height:100%; overflow:visible;}
+  .edp-chart .bar:hover, .edp-chart .bar-hit:hover + .bar{opacity:.8;}
+  .edp-table-wrap{overflow-x:auto;}
+  .edp-table{border-collapse:collapse; width:100%; font-size:12.5px; font-family:'IBM Plex Mono', monospace;}
+  .edp-table th{background:var(--ppt-navy); color:#fff; font-weight:600; padding:8px 10px; text-align:right; white-space:nowrap; border-right:1px solid rgba(255,255,255,.12);}
+  .edp-table th.lbl, .edp-table td.lbl{text-align:left; font-family:'IBM Plex Sans', sans-serif; white-space:nowrap;}
+  .edp-table thead tr:first-child th{background:var(--ppt-teal); font-size:11.5px;}
+  .edp-table td{padding:8px 10px; text-align:right; border-bottom:1px solid var(--grid); color:var(--ink); white-space:nowrap;}
+  .edp-table tbody tr:nth-child(even) td{background:var(--grid-soft);}
+  .edp-table td.lbl{font-weight:600; color:var(--ink-dim);}
+  .edp-table td.empty{color:var(--ink-faint);}
+  .edp-legend{display:flex; gap:18px; flex-wrap:wrap; font-size:12px; color:var(--ink-dim); margin-bottom:10px;}
+  .edp-legend .sw{display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:6px;}
+  .edp-legend .sw.line{height:3px; border-radius:2px; vertical-align:3px; width:16px;}
   .main-empty{text-align:center; color:var(--ink-faint); font-size:13.5px; padding:50px 20px;}
 
   /* ---------- Curva S ---------- */
@@ -745,6 +763,11 @@ function setupTabButtons(){
     <span>Entregables</span>
     <span class="count-pill" id="navEntregablesCount">0</span>
   </div>
+  <div class="nav-item" data-page="edp">
+    <span class="nav-icon">💰</span>
+    <span>EDP</span>
+    <span class="count-pill" id="navEdpCount">0</span>
+  </div>
   <div class="nav-item" data-page="para_ppt">
     <span class="nav-icon">🖼️</span>
     <span>Para PPT</span>
@@ -766,7 +789,6 @@ function setupTabButtons(){
       <!-- ============ IMPORTAR EXCEL ============ -->
       <div class="page-section active" id="page-import">
         <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding: 16px 0; border-bottom: 2px solid var(--grid);">
-          <img src="logo_r_engineering.png" alt="" style="height: 60px; width: auto;">
           <div>
             <h2 style="margin: 0; color: var(--ink); font-size: 24px; font-weight: 600;">Reporte de Avance</h2>
             <p style="margin: 4px 0 0 0; color: var(--ink-faint); font-size: 13px;">Sistema de Seguimiento de Proyectos</p>
@@ -801,23 +823,9 @@ function setupTabButtons(){
           </div>
 
           <div class="tabs-container">
-            <div class="tabs-header">
-              <button class="tab-button active" data-tab="curva-total">📊 Total</button>
-              <button class="tab-button" data-tab="curva-etapa1">📈 Etapa 1</button>
-              <button class="tab-button" data-tab="curva-etapa2">📈 Etapa 2</button>
-            </div>
-            
-            <div class="tabs-content active" id="tab-curva-total">
-              <div class="tabs-body" id="curvaTotalBody"></div>
-            </div>
-            
-            <div class="tabs-content" id="tab-curva-etapa1">
-              <div class="tabs-body" id="curvaEtapa1Body"></div>
-            </div>
-
-            <div class="tabs-content" id="tab-curva-etapa2">
-              <div class="tabs-body" id="curvaEtapa2Body"></div>
-            </div>
+            <!-- Pestañas generadas dinámicamente: una por cada bloque de la hoja "Curva" (TOTAL, M1, M2, M3...) -->
+            <div class="tabs-header" id="curvaTabsHeader"></div>
+            <div id="curvaTabsBodies"></div>
           </div>
         </div>
       </div>
@@ -969,6 +977,12 @@ function setupTabButtons(){
             </div>
           </div>
       </div>
+      </div>
+
+      <!-- ============ EDP (Estados de Pago) ============ -->
+      <div class="page-section" id="page-edp">
+        <div id="edpEmpty" class="main-empty">Importa un Excel con la hoja "EDP" para ver aquí la proyección de los estados de pago.</div>
+        <div id="edpContent" style="display:none;"></div>
       </div>
 
       <!-- ============ PARA PPT ============ -->
@@ -1347,16 +1361,24 @@ function findGanttHeader(sheet){
     rows.push(rowData);
   }
   
-  let name = null;
-  const row0 = rows[0] || [];
-  for(let c=0;c<20;c++){ if(row0[c]){ name = row0[c]; break; } }
-  
+  // Nombre del proyecto: celda F6 de "Detalle" (descripción de la fila Total).
+  const f6 = sheet['F6'];
+  let name = (f6 && f6.v !== null && f6.v !== undefined && String(f6.v).trim()) ? String(f6.v).trim() : null;
+
+  // Semana / fecha de corte: se aceptan etiquetas en español y portugués
+  // ("Semana de corte:" / "Semana" y "hasta el:" / "até"), buscando en las
+  // filas de cabecera (antes de la tabla, que empieza en la fila 5).
+  const norm = v => typeof v === 'string'
+    ? v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/:$/, '').trim()
+    : '';
   let semana_corte = null, hasta_el = null;
-  for(let r=0; r<Math.min(8, rows.length); r++){
+  for(let r=0; r<Math.min(4, rows.length); r++){
     const row = rows[r] || [];
-    for(let c=0;c<20;c++){
-      if(row[c] === 'Semana de corte:') semana_corte = row[c+1];
-      if(row[c] === 'hasta el:') hasta_el = row[c+1];
+    for(let c=0; c<row.length - 1; c++){
+      const k = norm(row[c]);
+      if(!k) continue;
+      if(semana_corte === null && (k === 'semana de corte' || k === 'semana')) semana_corte = row[c+1];
+      if(hasta_el === null && (k === 'hasta el' || k === 'ate' || k === 'hasta')) hasta_el = row[c+1];
     }
   }
   return {name, semana_corte, hasta_el};
@@ -1499,6 +1521,26 @@ function findCurvaS(sheet){
     return {prog, real, reprogramado};
   };
 
+  // Nombre de cada bloque: primer texto a la izquierda de s1Col en las filas
+  // inmediatamente superiores a la fila de fechas (ej. "TOTAL DO ESTUDO",
+  // "M1" + "Modelo Geológico 3D e de Blocos").
+  const findBlockLabel = (blockS1Row, idx) => {
+    for(let r = blockS1Row - 2; r >= Math.max(0, blockS1Row - 4); r--){
+      const row = getRow(r);
+      const parts = [];
+      for(let c = 0; c < s1Col; c++){
+        const v = row[c];
+        if(v !== null && v !== undefined && String(v).trim()) parts.push(String(v).trim());
+      }
+      if(parts.length) return { code: parts[0], title: parts.slice(1).join(' ') };
+    }
+    return { code: idx === 0 ? 'Total' : `Bloque ${idx}`, title: '' };
+  };
+  const blocks = s1Blocks.map((b, idx) => {
+    const lbl = findBlockLabel(b.row, idx);
+    return { ...lbl, ...findBlockSeries(lbl.code, b.row) };
+  });
+
   const totalSeries = findBlockSeries('TOTAL', s1Blocks[0].row);
   const etapa1Series = s1Blocks.length > 1
     ? findBlockSeries('ETAPA 1', s1Blocks[1].row)
@@ -1512,6 +1554,7 @@ function findCurvaS(sheet){
   return {
     week_labels,
     week_dates,
+    blocks,
     prog: totalSeries.prog,
     real: totalSeries.real,
     reprogramado: totalSeries.reprogramado,
@@ -1962,6 +2005,236 @@ function extractPPTGanttSource(sheet){
   return items;
 }
 
+/* ================= EDP (Estados de Pago) ================= */
+// Lee la hoja "EDP" a partir de la fila 21. Cada tabla se detecta por una fila
+// cuya etiqueta es "EDP" (fila de meses: SET, OCT...), con la fila superior
+// conteniendo los nombres (EDP 1, EDP 2...). El título de la tabla se toma de
+// las 2 filas anteriores (ej. "MONTO EDP"); las filas de datos siguen hasta la
+// primera fila sin etiqueta. No depende de posiciones fijas de columnas.
+function findEDP(workbook){
+  const sheet = workbook.Sheets['EDP'];
+  if(!sheet) return null;
+  const range = getEffectiveSheetRange(sheet);
+  const cell = (r, c) => { const x = sheet[XLSX.utils.encode_cell({r, c})]; return x ? x.v : null; };
+  const txt = v => (v === null || v === undefined) ? '' : String(v).trim();
+  const START_ROW = 20; // fila 21 del Excel (índice 0)
+  const maxC = Math.min(range.e.c, 80);
+  const tables = [];
+
+  for(let r = START_ROW; r <= range.e.r; r++){
+    let labelCol = -1;
+    for(let c = 0; c <= Math.min(maxC, 10); c++){
+      if(txt(cell(r, c)).toUpperCase() === 'EDP'){ labelCol = c; break; }
+    }
+    if(labelCol < 0) continue;
+
+    // Columnas con mes
+    const cols = [];
+    for(let c = labelCol + 1; c <= maxC; c++){
+      if(txt(cell(r, c))) cols.push(c); else if(cols.length) break;
+    }
+    if(!cols.length) continue;
+
+    const months = cols.map(c => txt(cell(r, c)));
+    const edps = cols.map((c, i) => txt(cell(r - 1, c)) || `EDP ${i + 1}`);
+
+    let title = '';
+    for(let rr = r - 2; rr >= Math.max(START_ROW, r - 3) && !title; rr--){
+      for(let c = 0; c <= maxC; c++){ const t = txt(cell(rr, c)); if(t){ title = t; break; } }
+    }
+
+    const rows = [];
+    let rr = r + 1;
+    for(; rr <= range.e.r; rr++){
+      const label = txt(cell(rr, labelCol));
+      if(!label) break;
+      rows.push({ label, values: cols.map(c => { const v = cell(rr, c); return typeof v === 'number' ? v : null; }) });
+    }
+    tables.push({ title, edps, months, rows });
+    r = rr;
+  }
+  return tables.length ? { tables } : null;
+}
+
+function fmtMonto(v, dec = 2){
+  if(v === null || v === undefined || isNaN(v)) return '—';
+  return Number(v).toLocaleString('es-PE', {minimumFractionDigits: dec, maximumFractionDigits: dec});
+}
+function fmtMontoCorto(v){
+  if(v === null || v === undefined || isNaN(v)) return '';
+  const a = Math.abs(v);
+  if(a >= 1e6) return (v/1e6).toLocaleString('es-PE', {maximumFractionDigits: 2}) + ' M';
+  if(a >= 1e3) return (v/1e3).toLocaleString('es-PE', {maximumFractionDigits: 1}) + ' k';
+  return v.toLocaleString('es-PE', {maximumFractionDigits: 0});
+}
+const edpNorm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+// Gráfico de barras (1 o 2 series agrupadas) + línea opcional, en UN solo eje.
+function buildEDPChart(categories, barSeries, lineSeries, W = 760, H = 320){
+  const padL = 64, padR = 20, padT = 22, padB = 44;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const n = categories.length;
+  if(!n) return '<div class="main-empty">Sin datos</div>';
+  const all = [...barSeries.flatMap(s => s.values), ...(lineSeries ? lineSeries.values : [])].filter(v => typeof v === 'number');
+  const rawMax = Math.max(1, ...all);
+  const mag = Math.pow(10, Math.floor(Math.log10(rawMax)));
+  const niceMax = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map(k => k * mag).find(v => v >= rawMax) || rawMax;
+  const y = v => padT + ih * (1 - v / niceMax);
+  const band = iw / n;
+  const groupW = Math.min(band * 0.7, 80);
+  const gap = 2;
+  const bw = (groupW - gap * (barSeries.length - 1)) / barSeries.length;
+  const cx = i => padL + band * i + band / 2;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">`;
+  for(let k = 0; k <= 4; k++){
+    const v = niceMax * k / 4, yy = y(v);
+    svg += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="var(--grid)" stroke-width="1"/>`;
+    svg += `<text x="${padL - 8}" y="${yy + 3}" text-anchor="end" font-size="10" fill="var(--ink-faint)" font-family="IBM Plex Mono, monospace">${fmtMontoCorto(v)}</text>`;
+  }
+  categories.forEach((c, i) => {
+    svg += `<text x="${cx(i)}" y="${padT + ih + 16}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink-dim)">${c.top}</text>`;
+    if(c.bottom) svg += `<text x="${cx(i)}" y="${padT + ih + 30}" text-anchor="middle" font-size="10" fill="var(--ink-faint)">${c.bottom}</text>`;
+  });
+  const r = 4;
+  barSeries.forEach((s, si) => {
+    s.values.forEach((v, i) => {
+      if(typeof v !== 'number') return;
+      const x0 = cx(i) - groupW / 2 + si * (bw + gap);
+      const y0 = y(Math.max(0, v)), h = Math.max(0, padT + ih - y0);
+      const rr = Math.min(r, bw / 2, h);
+      const path = `M${x0},${padT + ih} V${y0 + rr} Q${x0},${y0} ${x0 + rr},${y0} H${x0 + bw - rr} Q${x0 + bw},${y0} ${x0 + bw},${y0 + rr} V${padT + ih} Z`;
+      svg += `<g><title>${categories[i].top}${categories[i].bottom ? ' · ' + categories[i].bottom : ''} — ${s.name}: ${fmtMonto(v)}</title>`;
+      svg += `<path class="bar" d="${path}" fill="${s.color}"/>`;
+      // Etiqueta directa: solo la 1ª serie cuando hay barras agrupadas (evita que se encimen);
+      // si la línea pasa cerca de la etiqueta, se sube por encima del punto. Halo del color del panel.
+      if(s.labels !== false && (barSeries.length === 1 || si === 0)){
+        let ly = y0 - 6;
+        const lv = lineSeries && typeof lineSeries.values[i] === 'number' ? y(lineSeries.values[i]) : null;
+        if(lv !== null && Math.abs(lv - ly) < 14) ly = Math.min(ly, lv - 12);
+        svg += `<text x="${barSeries.length === 1 ? cx(i) : x0 + bw / 2}" y="${ly}" text-anchor="middle" font-size="10" fill="var(--ink-dim)" font-family="IBM Plex Mono, monospace" stroke="var(--panel)" stroke-width="3" paint-order="stroke">${fmtMontoCorto(v)}</text>`;
+      }
+      svg += `</g>`;
+    });
+  });
+  if(lineSeries){
+    const pts = lineSeries.values.map((v, i) => [i, v]).filter(([, v]) => typeof v === 'number');
+    if(pts.length){
+      svg += `<polyline points="${pts.map(([i, v]) => `${cx(i)},${y(v)}`).join(' ')}" fill="none" stroke="${lineSeries.color}" stroke-width="2" stroke-linejoin="round"/>`;
+      pts.forEach(([i, v]) => {
+        svg += `<g><title>${categories[i].top} — ${lineSeries.name}: ${fmtMonto(v)}</title><circle cx="${cx(i)}" cy="${y(v)}" r="4.5" fill="${lineSeries.color}" stroke="var(--panel)" stroke-width="2"/><circle cx="${cx(i)}" cy="${y(v)}" r="12" fill="transparent"/></g>`;
+      });
+      const [li, lv] = pts[pts.length - 1];
+      svg += `<text x="${cx(li)}" y="${y(lv) - 10}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)" font-family="IBM Plex Mono, monospace">${fmtMontoCorto(lv)}</text>`;
+    }
+  }
+  svg += `<line x1="${padL}" y1="${padT + ih}" x2="${W - padR}" y2="${padT + ih}" stroke="var(--ink-faint)" stroke-width="1"/>`;
+  svg += `</svg>`;
+  return svg;
+}
+
+function buildEDPTable(t){
+  const isAcum = lbl => edpNorm(lbl).includes('acumulad');
+  let html = `<div class="edp-table-wrap"><table class="edp-table"><thead>`;
+  html += `<tr><th class="lbl"></th>${t.edps.map(e => `<th>${e}</th>`).join('')}<th>Total</th></tr>`;
+  html += `<tr><th class="lbl">EDP</th>${t.months.map(m => `<th>${m}</th>`).join('')}<th></th></tr></thead><tbody>`;
+  t.rows.forEach(row => {
+    const nums = row.values.filter(v => typeof v === 'number');
+    const total = (!isAcum(row.label) && nums.length) ? nums.reduce((a, b) => a + b, 0) : null;
+    html += `<tr><td class="lbl">${row.label}</td>${row.values.map(v => `<td class="${v === null ? 'empty' : ''}">${fmtMonto(v)}</td>`).join('')}<td style="font-weight:700;">${total === null ? '' : fmtMonto(total)}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function renderEDP(){
+  const empty = document.getElementById('edpEmpty');
+  const content = document.getElementById('edpContent');
+  if(!empty || !content) return;
+  const proj = PROJECTS[selectedProjectIdx ?? 0];
+  const edp = proj && proj.edp;
+  if(!proj){ empty.style.display = 'block'; content.style.display = 'none'; return; }
+  if(!edp){
+    empty.textContent = 'El Excel cargado no tiene la hoja "EDP" (tabla a partir de la fila 21).';
+    empty.style.display = 'block'; content.style.display = 'none'; return;
+  }
+  empty.style.display = 'none'; content.style.display = 'block';
+
+  const findRow = (t, pred) => t ? t.rows.find(r => pred(edpNorm(r.label))) : null;
+  // Tabla de proyección = la que tiene "acumulado" o "por mes"; tablas de montos = título con "MONTO"
+  const tProy = edp.tables.find(t => t.rows.some(r => /acumulad|por mes/.test(edpNorm(r.label)))) || edp.tables[0];
+  let tMontos = edp.tables.filter(t => t !== tProy && edpNorm(t.title).includes('monto'));
+  if(!tMontos.length) tMontos = edp.tables.filter(t => t !== tProy);
+
+  const rMes = findRow(tProy, l => l.includes('por mes')) || findRow(tProy, l => !l.includes('acumulad'));
+  const rAcum = findRow(tProy, l => l.includes('acumulad'));
+
+  const sum = arr => (arr || []).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0);
+  const lastNum = arr => { const a = (arr || []).filter(v => typeof v === 'number'); return a.length ? a[a.length - 1] : null; };
+  // Moneda = texto entre paréntesis del título (ej. "MONTO EDP (REALES)" → "Reales")
+  const moneda = t => { const m = /\(([^)]+)\)/.exec(t.title || ''); return m ? m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase() : ''; };
+  const cats = tProy.months.map((m, i) => ({ top: m, bottom: tProy.edps[i] }));
+  const totalProy = rAcum ? lastNum(rAcum.values) : sum(rMes && rMes.values);
+
+  const montos = tMontos.map(t => {
+    const rP = findRow(t, l => l.includes('proyectad'));
+    const rR = findRow(t, l => l.includes('real'));
+    const conReal = rR ? rR.values.filter(v => typeof v === 'number').length : 0;
+    const proy = rP ? sum(rP.values) : null;
+    const real = rR ? sum(rR.values) : null;
+    return { t, rP, rR, cur: moneda(t), proy, real, conReal, pct: (proy ? real / proy : null) };
+  });
+
+  let tiles = `<div class="stat"><div class="k">PROYECTADO TOTAL</div><div class="v">${fmtMonto(totalProy, 0)}</div><div class="sub">acumulado al ${tProy.months[tProy.months.length - 1] || ''} (${tProy.edps.length} EDP)</div></div>`;
+  montos.forEach(m => {
+    const cur = m.cur ? ` (${m.cur.toUpperCase()})` : '';
+    tiles += `<div class="stat"><div class="k">EDP REAL / PROYECTADO${cur}</div><div class="v">${fmtMonto(m.real, 0)}</div><div class="sub">de ${fmtMonto(m.proy, 0)} · ${m.pct === null ? '—' : Math.round(m.pct * 100) + '%'} · ${m.conReal} de ${m.t.edps.length} EDP con real</div></div>`;
+  });
+
+  let html = `
+    <div class="stat-row" style="margin-bottom:22px; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));">${tiles}</div>
+
+    <div class="edp-card">
+      <div class="edp-card-h">📈 Proyección por mes (reales)</div>
+      <div class="edp-card-b">
+        <div class="edp-legend">
+          ${rMes ? `<span><span class="sw" style="background:var(--plan)"></span>${rMes.label}</span>` : ''}
+          ${rAcum ? `<span><span class="sw line" style="background:var(--ppt-orange)"></span>${rAcum.label}</span>` : ''}
+        </div>
+        <div class="edp-chart">${buildEDPChart(cats,
+          rMes ? [{ name: rMes.label, values: rMes.values, color: 'var(--plan)' }] : [],
+          rAcum ? { name: rAcum.label, values: rAcum.values, color: 'var(--ppt-orange)' } : null)}</div>
+      </div>
+    </div>`;
+
+  montos.forEach(m => {
+    if(!m.rP && !m.rR) return;
+    const mCats = m.t.months.map((mm, i) => ({ top: mm, bottom: m.t.edps[i] }));
+    const series = [];
+    if(m.rP) series.push({ name: m.rP.label, values: m.rP.values, color: 'var(--plan)' });
+    if(m.rR) series.push({ name: m.rR.label, values: m.rR.values, color: 'var(--real)' });
+    html += `
+    <div class="edp-card">
+      <div class="edp-card-h">💰 ${m.t.title || 'Monto EDP'}</div>
+      <div class="edp-card-b">
+        <div class="edp-legend">${series.map(s => `<span><span class="sw" style="background:${s.color}"></span>${s.name}</span>`).join('')}</div>
+        <div class="edp-chart">${buildEDPChart(mCats, series, null)}</div>
+      </div>
+    </div>`;
+  });
+
+  // Tablas: se omite la de proyección (ya está en el gráfico "Proyección por mes")
+  edp.tables.filter(t => t !== tProy).forEach((t, i) => {
+    html += `
+    <div class="edp-card">
+      <div class="edp-card-h">📋 ${t.title || (i === 0 ? 'Proyección EDP' : 'Tabla EDP ' + (i + 1))}</div>
+      <div class="edp-card-b">${buildEDPTable(t)}</div>
+    </div>`;
+  });
+
+  content.innerHTML = html;
+}
+
 function extractProject(workbook, filename){
   const curvaSheetName = findCurvaSSheetName(workbook);
   if(!curvaSheetName){
@@ -1969,7 +2242,7 @@ function extractProject(workbook, filename){
   }
 
   const curvaResult = findCurvaS(workbook.Sheets[curvaSheetName]);
-  const {week_labels, week_dates, prog, real, reprogramado, etapa1, etapa1Real, etapa1Reprogramado, etapa2, etapa2Real, etapa2Reprogramado} = curvaResult;
+  const {week_labels, week_dates, blocks, prog, real, reprogramado, etapa1, etapa1Real, etapa1Reprogramado, etapa2, etapa2Real, etapa2Reprogramado} = curvaResult;
   if(!week_labels.length){
     throw new Error(`"${filename}": no se pudo leer la tabla de semanas en la hoja "Curva".`);
   }
@@ -2003,6 +2276,8 @@ function extractProject(workbook, filename){
     hasta_el: hasta_el instanceof Date ? hasta_el.toISOString() : hasta_el,
     week_labels,
     week_dates: week_dates.map(d => d instanceof Date ? d.toISOString() : d),
+    curvaBlocks: blocks || [],
+    edp: findEDP(workbook),
     prog,
     real,
     reprogramado,
@@ -2045,10 +2320,16 @@ function buildCurvaChart(proj, cutIdx, progKey, realKey, W, H, reprogKey){
     svg += `<line class="cur-line" x1="${cx}" y1="${padT}" x2="${cx}" y2="${H-padB}"/>`;
   }
 
-  // Mostrar semanas en el eje X
+  // Mostrar semanas en el eje X — se muestra 1 de cada "labelStep" etiquetas
+  // para que no se encimen (mín. ~48px entre etiquetas), siempre incluyendo la última.
+  const minLabelGap = 48;
+  const labelStep = Math.max(1, Math.ceil(minLabelGap / (innerW / (n - 1))));
   for(let i=0; i<n; i++){
     const px = x(i);
     svg += `<line x1="${px}" y1="${padT}" x2="${px}" y2="${padT+innerH}" stroke="var(--grid)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+    const isLast = i === n - 1;
+    const showLabel = (i % labelStep === 0 && (isLast || (n - 1 - i) >= labelStep)) || isLast;
+    if(!showLabel) continue;
     
     const semana = proj.week_labels[i] || '';
     const fecha = proj.week_dates[i];
@@ -3217,6 +3498,8 @@ function setPage(page){
     renderEntregables();
   } else if(page === 'para_ppt') {
     renderParaPPT();
+  } else if(page === 'edp') {
+    renderEDP();
   }
 }
 
@@ -3253,6 +3536,10 @@ function updateHeader(){
   } else if(currentPage === 'para_ppt'){
     title.textContent = 'Para PPT';
     sub.textContent = hasProjects ? 'Vistas listas para copiar a una presentación' : 'Importa tu Excel para generar las vistas para PPT.';
+  } else if(currentPage === 'edp'){
+    title.textContent = 'EDP — Estados de Pago';
+    const pe = PROJECTS[selectedProjectIdx ?? 0];
+    sub.textContent = hasProjects ? (pe && pe.edp ? 'Proyección mensual de los estados de pago (hoja "EDP")' : 'El Excel no tiene la hoja "EDP".') : 'Importa tu Excel para ver la proyección de EDP.';
   }
 }
 
@@ -3505,106 +3792,73 @@ function renderTracking(){
   const diffClass = stats.diff===null ? '' : (stats.diff >= 0 ? 'pos' : 'neg');
   const diffSign = stats.diff===null ? '' : (stats.diff >= 0 ? '+' : '');
   
-  // Pestaña TOTAL
-  const hasReprogTotal = (proj.reprogramado || []).some(v => v !== null && v !== undefined);
-  document.getElementById('curvaTotalBody').innerHTML = `
-    <div class="legend">
-      <div class="item"><span class="swatch plan"></span> % Linea Base</div>
-      ${hasReprogTotal ? '<div class="item"><span class="swatch reprog"></span> % Reprogramado</div>' : ''}
-      <div class="item"><span class="swatch real"></span> % Real</div>
-    </div>
-    <div class="chart-box" style="margin-bottom: 24px;">${buildCurvaChart(proj, stats.cutIdx, 'prog', 'real', 760, 280, 'reprogramado')}</div>
-    <div class="stat-row">
-      <div class="stat">
-        <div class="k">% LINEA BASE</div>
-        <div class="v">${fmtPct(stats.progCur)}</div>
-        <div class="sub">${stats.dateLabel}</div>
-      </div>
-      <div class="stat">
-        <div class="k">% REAL</div>
-        <div class="v">${fmtPct(stats.realCur)}</div>
-        <div class="sub">${stats.realDateLabel ? `al ${stats.realDateLabel}` : stats.dateLabel}</div>
-      </div>
-      <div class="stat ${diffClass}">
-        <div class="k">DIFERENCIA</div>
-        <div class="v">${stats.diff===null ? '—' : diffSign + fmtPct(stats.diff)}</div>
-        <div class="sub">${stats.diff===null ? 'sin dato real cargado aún' : (stats.diff>=0 ? 'adelantado' : 'atrasado') + (stats.realDateLabel ? ` (real al ${stats.realDateLabel})` : '')}</div>
-      </div>
-    </div>
-  `;
+  // Una pestaña por cada bloque de la hoja "Curva" (TOTAL, M1, M2, M3...)
+  const blocks = (proj.curvaBlocks && proj.curvaBlocks.length)
+    ? proj.curvaBlocks
+    : [{ code: 'Total', title: '', prog: proj.prog, real: proj.real, reprogramado: proj.reprogramado }];
+  if(curvaActiveBlock >= blocks.length) curvaActiveBlock = 0;
 
-  // Pestaña ETAPA 1
-  const etapa1Prog = proj.etapa1 && stats.cutIdx >= 0 && stats.cutIdx < proj.etapa1.length ? proj.etapa1[stats.cutIdx] : null;
-  const etapa1RealInfo = lastNonNullUpTo(proj.etapa1Real, stats.cutIdx);
-  const etapa1Real = etapa1RealInfo.value;
-  const etapa1RealDateLabel = (etapa1RealInfo.idx !== null && etapa1RealInfo.idx !== stats.cutIdx) ? fmtWeekDateShort(proj, etapa1RealInfo.idx) : null;
-  const etapa1Diff = (etapa1Prog!==null && etapa1Real!==null) ? (etapa1Real - etapa1Prog) : null;
-  const etapa1DiffClass = etapa1Diff===null ? '' : (etapa1Diff >= 0 ? 'pos' : 'neg');
-  const etapa1DiffSign = etapa1Diff===null ? '' : (etapa1Diff >= 0 ? '+' : '');
-  
-  const hasReprogEtapa1 = (proj.etapa1Reprogramado || []).some(v => v !== null && v !== undefined);
-  document.getElementById('curvaEtapa1Body').innerHTML = `
-    <div class="legend">
-      <div class="item"><span class="swatch plan"></span> % Linea Base</div>
-      ${hasReprogEtapa1 ? '<div class="item"><span class="swatch reprog"></span> % Reprogramado</div>' : ''}
-      <div class="item"><span class="swatch real"></span> % Real</div>
-    </div>
-    <div class="chart-box" style="margin-bottom: 24px;">${buildCurvaChart(proj, stats.cutIdx, 'etapa1', 'etapa1Real', 760, 280, 'etapa1Reprogramado')}</div>
-    <div class="stat-row">
-      <div class="stat">
-        <div class="k">% LINEA BASE</div>
-        <div class="v">${fmtPct(etapa1Prog)}</div>
-        <div class="sub">${stats.dateLabel}</div>
-      </div>
-      <div class="stat">
-        <div class="k">% REAL</div>
-        <div class="v">${fmtPct(etapa1Real)}</div>
-        <div class="sub">${etapa1RealDateLabel ? `al ${etapa1RealDateLabel}` : stats.dateLabel}</div>
-      </div>
-      <div class="stat ${etapa1DiffClass}">
-        <div class="k">DIFERENCIA</div>
-        <div class="v">${etapa1Diff===null ? '—' : etapa1DiffSign + fmtPct(etapa1Diff)}</div>
-        <div class="sub">${etapa1Diff===null ? 'sin dato real cargado aún' : (etapa1Diff>=0 ? 'adelantado' : 'atrasado') + (etapa1RealDateLabel ? ` (real al ${etapa1RealDateLabel})` : '')}</div>
-      </div>
-    </div>
-  `;
+  const escHtml = s => String(s ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const header = document.getElementById('curvaTabsHeader');
+  const bodies = document.getElementById('curvaTabsBodies');
 
-  // Pestaña ETAPA 2
-  const etapa2Prog = proj.etapa2 && stats.cutIdx >= 0 && stats.cutIdx < proj.etapa2.length ? proj.etapa2[stats.cutIdx] : null;
-  const etapa2RealInfo = lastNonNullUpTo(proj.etapa2Real, stats.cutIdx);
-  const etapa2Real = etapa2RealInfo.value;
-  const etapa2RealDateLabel = (etapa2RealInfo.idx !== null && etapa2RealInfo.idx !== stats.cutIdx) ? fmtWeekDateShort(proj, etapa2RealInfo.idx) : null;
-  const etapa2Diff = (etapa2Prog!==null && etapa2Real!==null) ? (etapa2Real - etapa2Prog) : null;
-  const etapa2DiffClass = etapa2Diff===null ? '' : (etapa2Diff >= 0 ? 'pos' : 'neg');
-  const etapa2DiffSign = etapa2Diff===null ? '' : (etapa2Diff >= 0 ? '+' : '');
-  
-  const hasReprogEtapa2 = (proj.etapa2Reprogramado || []).some(v => v !== null && v !== undefined);
-  document.getElementById('curvaEtapa2Body').innerHTML = `
-    <div class="legend">
-      <div class="item"><span class="swatch plan"></span> % Linea Base</div>
-      ${hasReprogEtapa2 ? '<div class="item"><span class="swatch reprog"></span> % Reprogramado</div>' : ''}
-      <div class="item"><span class="swatch real"></span> % Real</div>
-    </div>
-    <div class="chart-box" style="margin-bottom: 24px;">${buildCurvaChart(proj, stats.cutIdx, 'etapa2', 'etapa2Real', 760, 280, 'etapa2Reprogramado')}</div>
-    <div class="stat-row">
-      <div class="stat">
-        <div class="k">% LINEA BASE</div>
-        <div class="v">${fmtPct(etapa2Prog)}</div>
-        <div class="sub">${stats.dateLabel}</div>
+  header.innerHTML = blocks.map((b, i) => {
+    const icon = i === 0 ? '📊' : '📈';
+    const name = i === 0 ? 'Total' : b.code;
+    return `<button class="tab-button curva-tab${i === curvaActiveBlock ? ' active' : ''}" data-curva-idx="${i}" title="${escHtml(b.code + (b.title ? ' · ' + b.title : ''))}">${icon} ${escHtml(name)}</button>`;
+  }).join('');
+
+  bodies.innerHTML = blocks.map((b, i) => {
+    const view = { week_labels: proj.week_labels, week_dates: proj.week_dates, prog: b.prog, real: b.real, reprogramado: b.reprogramado };
+    const progCur = b.prog && stats.cutIdx >= 0 && stats.cutIdx < b.prog.length ? b.prog[stats.cutIdx] : null;
+    const realInfo = lastNonNullUpTo(b.real || [], stats.cutIdx);
+    const realCur = realInfo.value;
+    const realDateLabel = (realInfo.idx !== null && realInfo.idx !== stats.cutIdx) ? fmtWeekDateShort(proj, realInfo.idx) : null;
+    const diff = (progCur !== null && progCur !== undefined && realCur !== null && realCur !== undefined) ? (realCur - progCur) : null;
+    const dClass = diff === null ? '' : (diff >= 0 ? 'pos' : 'neg');
+    const dSign = diff === null ? '' : (diff >= 0 ? '+' : '');
+    const hasReprog = (b.reprogramado || []).some(v => v !== null && v !== undefined);
+    const titleLine = i === 0 ? escHtml(b.code) : `${escHtml(b.code)}${b.title ? ' · ' + escHtml(b.title) : ''}`;
+    return `<div class="tabs-content${i === curvaActiveBlock ? ' active' : ''}" data-curva-body="${i}">
+      <div class="tabs-body">
+        <div style="font-size:13px; font-weight:600; color:var(--ink); margin-bottom:8px;">${titleLine}</div>
+        <div class="legend">
+          <div class="item"><span class="swatch plan"></span> % Linea Base</div>
+          ${hasReprog ? '<div class="item"><span class="swatch reprog"></span> % Reprogramado</div>' : ''}
+          <div class="item"><span class="swatch real"></span> % Real</div>
+        </div>
+        <div class="chart-box" style="margin-bottom: 24px;">${buildCurvaChart(view, stats.cutIdx, 'prog', 'real', 760, 280, 'reprogramado')}</div>
+        <div class="stat-row">
+          <div class="stat">
+            <div class="k">% LINEA BASE</div>
+            <div class="v">${fmtPct(progCur)}</div>
+            <div class="sub">${stats.dateLabel}</div>
+          </div>
+          <div class="stat">
+            <div class="k">% REAL</div>
+            <div class="v">${fmtPct(realCur)}</div>
+            <div class="sub">${realDateLabel ? `al ${realDateLabel}` : stats.dateLabel}</div>
+          </div>
+          <div class="stat ${dClass}">
+            <div class="k">DIFERENCIA</div>
+            <div class="v">${diff === null ? '—' : dSign + fmtPct(diff)}</div>
+            <div class="sub">${diff === null ? 'sin dato real cargado aún' : (diff >= 0 ? 'adelantado' : 'atrasado') + (realDateLabel ? ` (real al ${realDateLabel})` : '')}</div>
+          </div>
+        </div>
       </div>
-      <div class="stat">
-        <div class="k">% REAL</div>
-        <div class="v">${fmtPct(etapa2Real)}</div>
-        <div class="sub">${etapa2RealDateLabel ? `al ${etapa2RealDateLabel}` : stats.dateLabel}</div>
-      </div>
-      <div class="stat ${etapa2DiffClass}">
-        <div class="k">DIFERENCIA</div>
-        <div class="v">${etapa2Diff===null ? '—' : etapa2DiffSign + fmtPct(etapa2Diff)}</div>
-        <div class="sub">${etapa2Diff===null ? 'sin dato real cargado aún' : (etapa2Diff>=0 ? 'adelantado' : 'atrasado') + (etapa2RealDateLabel ? ` (real al ${etapa2RealDateLabel})` : '')}</div>
-      </div>
-    </div>
-  `;
+    </div>`;
+  }).join('');
 }
+
+// Cambio de pestaña en "Curva S" (pestañas dinámicas → delegación de eventos)
+var curvaActiveBlock = 0;
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.curva-tab');
+  if(!btn) return;
+  curvaActiveBlock = parseInt(btn.dataset.curvaIdx, 10) || 0;
+  document.querySelectorAll('#curvaTabsHeader .curva-tab').forEach(b => b.classList.toggle('active', b === btn));
+  document.querySelectorAll('#curvaTabsBodies [data-curva-body]').forEach(el => el.classList.toggle('active', el.dataset.curvaBody === String(curvaActiveBlock)));
+});
 
 /* ================= Responsable Calendar (weekly view) ================= */
 
@@ -4734,7 +4988,8 @@ function buildEntregablesDashboard(projects, projectFilter = ''){
   Object.keys(nivelProgressStats).sort().forEach(key => {
     const stat = nivelProgressStats[key];
     const porcentaje = Math.round((stat.completado / stat.total) * 100);
-    const nivelColor = nivelColorMap[key];
+    // Color según avance: 100% = verde, parcial = teal, 0% = sin barra
+    const nivelColor = porcentaje >= 100 ? 'var(--pos)' : 'var(--plan)';
     
     html += `<div style="margin-bottom: 16px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -5891,6 +6146,16 @@ function render(){
   document.getElementById('navFileCount').textContent = PROJECTS.length;
   document.getElementById('navGanttCount').textContent = PROJECTS.length;
   if(document.getElementById('navParaPptCount')) document.getElementById('navParaPptCount').textContent = PROJECTS.length;
+  if(document.getElementById('navEdpCount')){
+    const pe = PROJECTS[selectedProjectIdx ?? 0];
+    const t0 = pe && pe.edp && pe.edp.tables[0];
+    document.getElementById('navEdpCount').textContent = t0 ? t0.edps.length : 0;
+  }
+  if(document.getElementById('navEntregablesCount')){
+    const isEntreg = t => { const s = String(t || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); return s === 'entregavel' || s === 'entregable'; };
+    document.getElementById('navEntregablesCount').textContent =
+      PROJECTS.reduce((acc, p) => acc + (p.ganttRows || []).filter(r => isEntreg(r.tipo)).length, 0);
+  }
 
   const filebar = document.getElementById('filebar');
   filebar.innerHTML = PROJECTS.map(p => `<span class="chip">${p.file}</span>`).join('');
@@ -5909,10 +6174,11 @@ function render(){
       input.max = toISODate(new Date(2099, 11, 31));
       if(!selectedDate){
         selectedDate = defaultCutoffDate() || max;
-        input.value = toISODate(selectedDate);
-        // Asegurar que se actualiza el display inmediatamente
-        setTimeout(() => updateCutoffDateDisplay(), 10);
       }
+      // Sincronizar siempre el input con la fecha de corte vigente (incluida la
+      // que viene del Excel: celda "até"/"hasta el" de la hoja "Detalle").
+      if(input.value !== toISODate(selectedDate)) input.value = toISODate(selectedDate);
+      setTimeout(() => updateCutoffDateDisplay(), 10);
     }
   }
 
@@ -5925,6 +6191,7 @@ function render(){
   renderResponsables();
   renderEntregables();
   renderParaPPT();
+  renderEDP();
   updateHeader();
 }
 
